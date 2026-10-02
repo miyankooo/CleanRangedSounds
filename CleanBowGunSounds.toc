@@ -1,0 +1,19 @@
+## Interface: 16001
+## Title: Clean Bow Gun Sounds
+## Notes: Mutes the bow pullback, can play the cleaner bow release in place of the looser one, and mutes any other shot sound you tick.
+## Author: miyanko
+## Version: 2.0.0
+## Category: Audio
+## IconTexture: Interface\Icons\INV_Weapon_Bow_05
+## SavedVariables: CleanBowGunSoundsDB
+## AddonCompartmentFunc: CleanBowGunSounds_CompartmentClick
+## AddonCompartmentFuncOnEnter: CleanBowGunSounds_CompartmentEnter
+## AddonCompartmentFuncOnLeave: CleanBowGunSounds_CompartmentLeave
+
+# Load order is the dependency order: Sounds owns the sound list, the saved settings and the muting,
+# Release plays the swapped bow release on your own shots, and Options builds the settings panel, the
+# slash command and the addon-menu entry on top of both.
+
+Core\Sounds.lua
+Core\Release.lua
+UI\Options.lua
