@@ -1,0 +1,17 @@
+## Interface: 16001
+## Title: Mute Bow Sounds
+## Notes: Mutes the hunter bow pullback sound, plus any other shot sound you tick.
+## Author: miyanko
+## Version: 1.0.0
+## Category: Audio
+## IconTexture: Interface\Icons\INV_Weapon_Bow_05
+## SavedVariables: MuteBowSoundsDB
+## AddonCompartmentFunc: MuteBowSounds_CompartmentClick
+## AddonCompartmentFuncOnEnter: MuteBowSounds_CompartmentEnter
+## AddonCompartmentFuncOnLeave: MuteBowSounds_CompartmentLeave
+
+# Load order is the dependency order: Sounds owns the sound list, the saved settings and the muting, and
+# Options builds the settings panel, the slash command and the addon-menu entry on top of it.
+
+Core\Sounds.lua
+UI\Options.lua
