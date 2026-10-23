@@ -1,0 +1,19 @@
+## Interface: 16001
+## Title: CleanRangedSounds
+## Notes: Mutes the bow creak before each shot and any other bow, crossbow or gun sound you pick.
+## Author: miyanko
+## Version: 1.0.0
+## Category: Media
+## IconTexture: Interface\Icons\INV_Weapon_Bow_05
+## SavedVariables: CleanRangedSoundsDB
+## AddonCompartmentFunc: CleanRangedSounds_CompartmentClick
+## AddonCompartmentFuncOnEnter: CleanRangedSounds_CompartmentEnter
+## AddonCompartmentFuncOnLeave: CleanRangedSounds_CompartmentLeave
+
+# Load order is the dependency order: Sounds owns the sound list, the saved settings, the muting and
+# playback, Release plays a kept shot sound on your own shots, and Options builds the settings
+# panel, the slash command and the addon-menu entry on top of both.
+
+Core\Sounds.lua
+Core\Release.lua
+UI\Options.lua

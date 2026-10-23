@@ -1,55 +1,69 @@
-# CleanBowGunSounds
+# CleanRangedSounds
 
-Mutes the creak of a bow being drawn before every shot, and can play the cleaner bow release sound in place of the looser one. Every other shot sound can be muted on its own in the game's options.
+Mutes the creak of a bow being drawn before every shot, plus any other bow or gun sound you pick.
 
 ## Features
 
-- The bow pullback is muted as soon as the addon loads, with nothing to set up
-- One checkbox per shot sound:
-
-| Setting | What it does | Default |
-| --- | --- | --- |
-| Bow pullback | Mutes the creak of a bow or crossbow being drawn before each shot | On |
-| Bow release | Mutes the twang of a bow or crossbow string as the shot leaves | Off |
-| Play release 1 in place of release 2 | Your own shots never play the looser of the game's release sounds; the cleaner first one plays in its place | Off |
-| Gun load | Mutes the click of a gun being loaded before each shot | Off |
-| Gun fire | Mutes the bang of a gun firing | Off |
-
-- Crossbows play the bow sounds, so the bow rows cover them too
-- Every change applies at once, with no reload
+- The bow pullback is muted as soon as the addon loads, with nothing to set up.
+- Every sound file on its own row: tick to mute it, click Play to hear it first. Applied at once with no reload.
+- Bows, crossbows and guns, each with every phase that has a sound: pull and shot for bows, load and shot for crossbows and guns.
+- Mute only the shot sounds you dislike, and your own shots play one you kept, so no shot goes silent.
 
 ## Installation
 
-Drop the `CleanBowGunSounds` folder into the AddOns folder of WoW Forever:
+1. Install it with the CurseForge app under WoW Forever, or copy the `CleanRangedSounds` folder into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+2. Restart the game or type `/reload`.
+3. Enable CleanRangedSounds in the AddOns list.
 
-```
-World of Warcraft/_classic_beta_/Interface/AddOns/
-```
+## Usage
 
-If you used MuteBowSounds, delete its folder. This addon replaces it, and its settings start fresh.
+1. Log in. The bow pullback is already muted.
+2. Type `/crs` or pick CleanRangedSounds in the addon menu at the minimap.
+3. Click Play to hear a sound, and tick every one you want muted.
+
+## Commands
+
+| Command | Does |
+| --- | --- |
+| `/cleanrangedsounds` | Opens the settings |
+| `/crs` | Short form of `/cleanrangedsounds` |
 
 ## Settings
 
-Open **Options → AddOns → Clean Bow Gun Sounds**, pick **Clean Bow Gun Sounds** in the addon menu at the minimap, or type `/cleanbowgunsounds` (short form `/cbgs`).
+Open Options, AddOns, CleanRangedSounds. Settings are saved per account, and Defaults mutes the bow pullback only.
 
-**Play release 1 in place of release 2** sits under **Bow release** and greys out while the release is muted outright, since there is nothing left to swap. **Defaults** mutes the bow pullback only. Settings are saved per account.
+The game picks one of three files at random for each sound. Every file has its own row with a Play button.
 
-## How the release swap works
+| Section | Rows | What they mute | Default |
+| --- | --- | --- | --- |
+| Bow | Mute Pull 1 to 11 | The creak of a bow being drawn before each shot | On |
+| Bow | Mute Shot 1 to 8 | The twang of a bow string as the shot leaves | Off |
+| Crossbow | Mute Load 1 to 6 | The click of a crossbow being loaded before each shot | Off |
+| Crossbow | Mute Shot 1 to 6 | The snap of a crossbow firing | Off |
+| Gun | Mute Load 1 to 3 | The click of a gun being loaded before each shot | Off |
+| Gun | Mute Shot 1 to 3 | The bang of a gun firing | Off |
+| Your Shots | Replace Muted Shot Sounds | Keeps your own shots audible when some shot files of your weapon are muted | On |
 
-The game plays one of three release sounds at random on each bow shot. With the swap on, the addon mutes all three. On each of your own bow or crossbow shots it then plays one itself, with the game's odds, except that release 1 plays wherever the game would have picked release 2.
+Each group lists every file a sound kit on Forever can play. In the bow groups the first three are the classic sounds and the rest are the hunter spell variants Forever's newer shots use. A bow has no load sound and a gun no pull sound. Crossbows may also play the bow pull and shot sounds.
 
-It covers Auto Shot, Shoot Bow and Shoot Crossbow, and every rank of Arcane, Aimed, Multi, Concussive, Distracting, Scatter, Tranquilizing and Sniper Shot, Serpent, Scorpid and Viper Sting, and Black Arrow.
+The game's own pick can't be read, so muting one shot file alone would leave some of your shots silent. With Replace Muted Shot Sounds on, the addon mutes your weapon's whole shot group instead, and on each of your own shots it plays one of the files you kept. Muting bow Shot 2, the loosest twang, gives a cleaner release.
+
+It follows Auto Shot, Shoot Bow, Shoot Crossbow and Shoot Gun, and every rank of Arcane, Aimed, Multi, Concussive, Distracting, Scatter, Tranquilizing, Sniper and Chimera Shot, Serpent, Scorpid and Viper Sting, and Black Arrow.
 
 ## Requirements
 
-WoW Forever 1.60.x (`## Interface: 16001`). No libraries, no dependencies.
+WoW Forever 1.60.x (Interface `16001`). No other addons needed.
 
 ## Restrictions
 
-**Muted for everyone, not only you.** The game mutes a sound wherever it plays, so the bows and guns of other players and of creatures go quiet too.
+A muted sound is muted for everyone, not only you. The game mutes a sound wherever it plays, so the bows and guns of other players and of creatures go quiet too.
 
-**The swap only follows your own shots.** While it is on, the bows of other players and creatures play no release sound. The game hides other units' casts from addons, so their shots can't be followed.
+Replace Muted Shot Sounds only follows your own shots. While it replaces a group, the bows, crossbows or guns of other players and creatures play no shot sound, because the game hides other units' casts from addons.
 
-**Shot abilities keep their own sounds.** Arcane Shot, Multi-Shot, Serpent Sting and the other shot abilities play spell sounds that many other spells share, such as the Arcane Missiles impact. Muting them would silence those spells as well, so the addon leaves them alone.
+Shot abilities keep their own sounds. Arcane Shot, Multi-Shot, Serpent Sting and the other shot abilities play spell sounds that many other spells share, such as the Arcane Missiles impact. Muting them would silence those spells as well.
 
-**Not yet run in game.** The sound files were taken from the WoW Forever 1.60.1 client data, and every part of the game interface the addon touches was checked against Blizzard's published UI source for 1.60.1. It has not been tested on a live character, and the release swap depends on game behaviour that can only be confirmed there.
+Opening the settings in combat opens them once combat ends.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
