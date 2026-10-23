@@ -1,0 +1,7 @@
+package-as: CleanRangedSounds
+manual-changelog: CHANGELOG.md
+
+ignore:
+  - CLAUDE.md
+  - Tests
+  - Tools
