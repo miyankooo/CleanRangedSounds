@@ -11,7 +11,7 @@ Mutes the creak of a bow being drawn before every shot, plus any other bow or gu
 
 ## Installation
 
-1. Install it with the CurseForge app under WoW Forever, or copy the `CleanRangedSounds` folder into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+1. Install it with the CurseForge app under WoW Forever, or copy the `CleanRangedSounds` folder into `World of Warcraft/_forever_/Interface/AddOns/`.
 2. Restart the game or type `/reload`.
 3. Enable CleanRangedSounds in the AddOns list.
 
@@ -32,7 +32,7 @@ Mutes the creak of a bow being drawn before every shot, plus any other bow or gu
 
 Open Options, AddOns, CleanRangedSounds. Settings are saved per account, and Defaults mutes the bow pullback only.
 
-The game picks one of three files at random for each sound. Every file has its own row with a Play button.
+The game picks one of several files at random for each sound, 3 to 11 per group. Every file has its own row with a Play button.
 
 | Section | Rows | What they mute | Default |
 | --- | --- | --- | --- |
@@ -48,7 +48,7 @@ Each group lists every file a sound kit on Forever can play. In the bow groups t
 
 The game's own pick can't be read, so muting one shot file alone would leave some of your shots silent. With Replace Muted Shot Sounds on, the addon mutes your weapon's whole shot group instead, and on each of your own shots it plays one of the files you kept. Muting bow Shot 2, the loosest twang, gives a cleaner release.
 
-It follows Auto Shot, Shoot Bow, Shoot Crossbow and Shoot Gun, and every rank of Arcane, Aimed, Multi, Concussive, Distracting, Scatter, Tranquilizing, Sniper and Chimera Shot, Serpent, Scorpid and Viper Sting, and Black Arrow.
+It follows Auto Shot, Shoot, Shoot Bow, Shoot Crossbow and Shoot Gun, and every rank of Arcane, Aimed, Multi, Concussive, Distracting, Scatter, Tranquilizing, Sniper and Chimera Shot, Serpent, Scorpid and Viper Sting, and Black Arrow.
 
 ## Requirements
 

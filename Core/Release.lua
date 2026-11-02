@@ -1,10 +1,12 @@
 local _, ns = ...
 
--- Rank 1 of every player spell that fires the ranged weapon (SpellMisc Attributes_0 bit 0x2 on 70374).
--- Matching by the client's own spell name covers every rank and locale, including ranks the DB2 export
--- does not list, such as Multi-Shot 2 to 5. Chimera Shot is a rune spell; an unlearned one never fires.
+-- Rank 1 of every player spell that fires the ranged weapon (SpellMisc Attributes_0 bit 0x2 on 70374), plus
+-- Auto Shot and Forever's Shoot (1272941), which lack the bit on 70707. A wand's Shoot shares the name but
+-- fails the weapon check. Matching by the client's own spell name covers every rank and locale, including
+-- ranks the DB2 export does not list, such as Multi-Shot 2 to 5. An unlearned spell never fires.
 local SHOT_SPELLS = {
   75, 2480, 7918, 7919, 3044, 19434, 2643, 5116, 20736, 19503, 19801, 1978, 3043, 3034, 3674, 1310687, 409433,
+  1272941,
 }
 
 local SHOT_BY_WEAPON = {
