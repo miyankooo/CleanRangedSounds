@@ -2,7 +2,7 @@
 ## Title: CleanRangedSounds
 ## Notes: Mutes the bow creak before each shot and any other bow, crossbow or gun sound you pick.
 ## Author: miyanko
-## Version: 1.0.0
+## Version: @project-version@
 ## Category: Media
 ## IconTexture: Interface\Icons\inv_weapon_bow_07
 ## SavedVariables: CleanRangedSoundsDB
