@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/miyankooo/CleanRangedSounds/main/.github/icon.png" width="64" height="64" alt="">
 
-# CleanRangedSounds
+# Clean Ranged Sounds
 
 A WoW Forever addon that mutes the creak of a bow being drawn before every shot, plus any other bow, crossbow or gun sound you pick. The creak is gone as soon as you log in, with nothing to set up.
 
@@ -14,7 +14,7 @@ A WoW Forever addon that mutes the creak of a bow being drawn before every shot,
 
 ## Usage
 
-1. Type `/crs`, or pick CleanRangedSounds in the addon menu.
+1. Type `/crs`, or pick Clean Ranged Sounds in the addon menu.
 2. Under Bow, Crossbow and Gun, click Play to hear a sound and tick the ones to mute.
 3. Under Your Shots, pick which shot sounds each weapon plays.
 4. Click Defaults to mute only the bow creak again.

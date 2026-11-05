@@ -7,7 +7,7 @@ function PlaySoundFile(file) played[#played + 1] = { file = file, muted = engine
 
 local onLoaded
 EventUtil = { ContinueOnAddOnLoaded = function(_, callback) onLoaded = callback end }
-C_AddOns = { GetAddOnMetadata = function() return "CleanRangedSounds" end }
+C_AddOns = { GetAddOnMetadata = function() return "Clean Ranged Sounds" end }
 
 local ns = {}
 assert(loadfile("Core/Sounds.lua"))("CleanRangedSounds", ns)

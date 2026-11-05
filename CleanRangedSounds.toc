@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: CleanRangedSounds
+## Title: Clean Ranged Sounds
 ## Notes: Mutes the bow creak before each shot and any other bow, crossbow or gun sound you pick.
 ## Author: miyanko
 ## Version: @project-version@
