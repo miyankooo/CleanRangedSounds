@@ -4,7 +4,7 @@
 ## Author: miyanko
 ## Version: 1.0.0
 ## Category: Media
-## IconTexture: Interface\Icons\INV_Weapon_Bow_05
+## IconTexture: Interface\Icons\inv_weapon_bow_07
 ## SavedVariables: CleanRangedSoundsDB
 ## AddonCompartmentFunc: CleanRangedSounds_CompartmentClick
 ## AddonCompartmentFuncOnEnter: CleanRangedSounds_CompartmentEnter
