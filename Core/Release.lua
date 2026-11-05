@@ -41,13 +41,13 @@ local function RangedShotGroup()
 end
 
 -- Cast info for the player is only secret when Blizzard flags the spell itself, so a secret spell ID is
--- skipped instead of read. The kept files stay muted for the game, so only this pick plays.
+-- skipped instead of read. The weapon's own shot group stays muted for the game, so only this pick plays.
 local function OnSpellcastSucceeded(_, _, _, _, spellID)
   if IsSecret(spellID) or not shotNames[C_Spell.GetSpellName(spellID) or ""] then return end
 
   local group = RangedShotGroup()
   local kept = group and ns.KeptFiles(group)
-  if kept then ns.PlayFile(kept[math.random(#kept)]) end
+  if kept and #kept > 0 then ns.PlayFile(kept[math.random(#kept)]) end
 end
 
 local listener = CreateFrame("Frame")

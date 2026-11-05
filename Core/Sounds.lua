@@ -65,17 +65,26 @@ ns.db = {}
 -- unticked file starts out untouched, so a mute set by another addon is never undone at load.
 local mutedByUs = {}
 
--- The game's own pick cannot be read, so a shot group with some files muted would leave
--- those shots silent. With replacement on, the whole group is muted for the game and your own shots
--- play one of the kept files instead (Core/Release.lua). Nil when the group plays as the game picks.
+-- The files your own shots with this group's weapon pick from: the kept files of every shot group that weapon
+-- plays. The game's own pick cannot be read, so whenever that differs from the game's, the whole group is muted
+-- for the game and your own shots play one of these instead (Core/Release.lua). A weapon on its own sounds only
+-- replaces when replacement is on and some but not all of its files are muted. Nil when the group plays as the
+-- game picks, empty when the weapon plays no kept sound.
 function ns.KeptFiles(group)
-  if not group.shot or not ns.db.replace then return nil end
+  if not group.shot then return nil end
 
-  local kept = {}
-  for _, file in ipairs(group.files) do
-    if not ns.db.muted[file] then kept[#kept + 1] = file end
+  local plays, ownOnly, kept = ns.db.plays[group.shot], true, {}
+  for _, other in ipairs(ns.groups) do
+    if other.shot then
+      if plays[other.shot] ~= (other == group) then ownOnly = false end
+      if plays[other.shot] then
+        for _, file in ipairs(other.files) do
+          if not ns.db.muted[file] then kept[#kept + 1] = file end
+        end
+      end
+    end
   end
-  if #kept == 0 or #kept == #group.files then return nil end
+  if ownOnly and (not ns.db.replace or #kept == 0 or #kept == #group.files) then return nil end
   return kept
 end
 
@@ -116,6 +125,15 @@ local function LoadSettings()
     end
   end
   if type(db.replace) ~= "boolean" then db.replace = true end
+
+  -- plays[weapon][sound]: whether your own shots with that weapon play that weapon's shot sounds.
+  if type(db.plays) ~= "table" then db.plays = {} end
+  for weapon in pairs(ns.shotGroups) do
+    if type(db.plays[weapon]) ~= "table" then db.plays[weapon] = {} end
+    for sound in pairs(ns.shotGroups) do
+      if type(db.plays[weapon][sound]) ~= "boolean" then db.plays[weapon][sound] = weapon == sound end
+    end
+  end
   ns.db = db
 end
 

@@ -11,7 +11,7 @@ C_AddOns = { GetAddOnMetadata = function() return "CleanRangedSounds" end }
 
 local ns = {}
 assert(loadfile("Core/Sounds.lua"))("CleanRangedSounds", ns)
-CleanRangedSoundsDB = nil
+CleanRangedSoundsDB = { plays = { gun = { crossbow = "yes" } } }
 onLoaded()
 
 local failures = 0
@@ -83,6 +83,36 @@ Check("pull never replaces, an untick unmutes", ns.KeptFiles(pull) == nil and no
 engineMuted[567719] = true
 ns.PlayFile(567719)
 Check("a file another addon muted stays muted", engineMuted[567719] and played[2].muted)
+
+local gunShot, plays = Group("gunShot"), ns.db.plays
+Check("each weapon plays only its own shots, also over a broken saved value", plays.gun.gun
+  and plays.gun.crossbow == false and plays.bow.bow and not plays.bow.crossbow and not plays.crossbow.gun)
+
+plays.gun.gun, plays.gun.crossbow = false, true
+ns.Refresh(gunShot)
+local silenced = ns.KeptFiles(gunShot)
+Check("a gun on crossbow shots plays the five kept crossbow files", silenced and #silenced == 5
+  and silenced[1] == 925551 and AllMuted(gunShot, true))
+
+plays.gun.gun = true
+local mixed = ns.KeptFiles(gunShot)
+Check("gun and crossbow shots mix", mixed and #mixed == 8 and mixed[1] == 925551 and mixed[6] == 567721)
+
+plays.gun.gun, plays.gun.crossbow = false, false
+ns.Refresh(gunShot)
+local none = ns.KeptFiles(gunShot)
+Check("a gun with no shot sound ticked stays silent", none and #none == 0 and AllMuted(gunShot, true))
+
+plays.gun.gun = true
+ns.Refresh(gunShot)
+Check("back on its own shots the gun plays as the game picks", ns.KeptFiles(gunShot) == nil
+  and AllMuted(gunShot, false))
+
+ns.db.replace = false
+plays.bow.crossbow = true
+local borrowed = ns.KeptFiles(bowShot)
+Check("another weapon's shots play also without replacement", borrowed and #borrowed == 5
+  and borrowed[1] == 925551)
 
 print(failures == 0 and "Sounds: all checks passed" or ("Sounds: " .. failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

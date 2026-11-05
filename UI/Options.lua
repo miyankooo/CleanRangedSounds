@@ -38,6 +38,27 @@ local function AddReplaceRow(category)
     .. " no shot sound.")
 end
 
+local function Title(key)
+  return (key:gsub("^%l", strupper))
+end
+
+-- One row per weapon and shot sound, so each weapon plays one weapon's shot sounds or a mix of several.
+local function AddPlaysRow(category, weapon, sound)
+  local variable = ("CLEAN_RANGED_SOUNDS_%s_PLAYS_%s"):format(strupper(weapon.shot), strupper(sound.shot))
+  local label = ("%s Plays %s Shots"):format(Title(weapon.shot), Title(sound.shot))
+  local setting = Settings.RegisterProxySetting(category, variable, Settings.VarType.Boolean, label,
+    weapon == sound,
+    function() return ns.db.plays[weapon.shot][sound.shot] end,
+    function(value)
+      ns.db.plays[weapon.shot][sound.shot] = value
+      ns.Refresh(weapon)
+    end)
+
+  Settings.CreateCheckbox(category, setting, ("Your own %s shots play the %s shot sounds you kept. Tick several"
+    .. " to mix them. Once your %s plays another weapon's sounds, other %ss play no shot sound."):format(
+    weapon.shot, sound.shot, weapon.shot, weapon.shot))
+end
+
 local function RegisterPanel()
   local category, layout = Settings.RegisterVerticalLayoutCategory(ns.title)
 
@@ -46,8 +67,15 @@ local function RegisterPanel()
     for index, file in ipairs(group.files) do AddFileRow(category, layout, group, index, file) end
   end
 
-  layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Your Shots"))
+  layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Replace Muted Sounds"))
   AddReplaceRow(category)
+
+  layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Your Shots"))
+  for _, weapon in ipairs(ns.groups) do
+    for _, sound in ipairs(ns.groups) do
+      if weapon.shot and sound.shot then AddPlaysRow(category, weapon, sound) end
+    end
+  end
 
   Settings.RegisterAddOnCategory(category)
   categoryID = category:GetID()
