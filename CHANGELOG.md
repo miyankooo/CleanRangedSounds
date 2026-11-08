@@ -5,7 +5,7 @@
 
 ### Bug Fixes
 
-* the settings box keeps a margin above the bottom of the page ([3ab90b3](https://github.com/miyankooo/CleanRangedSounds/commit/3ab90b3697385a43a14e5c3c9010487e81e34378))
+* The settings box keeps a margin above the bottom of the page
 
 ## [1.1.0](https://github.com/miyankooo/CleanRangedSounds/compare/v1.0.0...v1.1.0) (2026-11-08)
 
