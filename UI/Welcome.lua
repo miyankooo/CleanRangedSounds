@@ -18,12 +18,6 @@ function ns.PrintWelcome()
     .. SurfaceLink(SETTINGS) .. " or type /crs to choose which sounds play.")
 end
 
--- /crs intro: the welcome line now, and the help tip again the next time its row shows.
-function ns.ReplayIntro()
-  ns.db.tipSeen = nil
-  ns.PrintWelcome()
-end
-
 -- Another addon's link may come from a line kept from restricted content, so it is checked before the comparison.
 EventRegistry:RegisterCallback("SetItemRef", function(_, link)
   if ns.CanAccess(link) and link == LINK then ns.OpenSettings() end

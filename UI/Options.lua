@@ -109,34 +109,38 @@ end
 -- Blizzard's yellow callout, as an own HelpTipTemplate frame of the target. Never HelpTip:Show: it takes a frame from
 -- Blizzard's shared pool, and writing to the pool from addon code taints the help tips Blizzard shows later. The tip
 -- shows each time its target shows until it is closed or the feature is used, then never again on the account. It
--- hides with its target without being marked. The returned function marks the feature used.
-local function AttachTip(target, text, targetPoint, alignment)
+-- hides with its target without being marked. Reset before every Init: only Blizzard's pool resets a tip, and Init
+-- leaves acknowledged set (Blizzard_SharedXML/HelpTip.lua:419-431, 495, 687), so a tip closed once and brought back
+-- by /crs intro would count as seen when it merely hides with its target. alignment is a HelpTip info field
+-- (HelpTip.lua:8), here to keep the tip on the page.
+local function AttachTip(target, text, targetPoint, relativeRegion, alignment)
   local tip
   local info = {
     text = text,
     buttonStyle = HelpTip.ButtonStyle.Close,
     targetPoint = targetPoint,
     alignment = alignment,
-    -- A closed tip keeps its acknowledged mark (HelpTipTemplateMixin:HandleAcknowledge), which would mark the next
-    -- showing seen as soon as it hides, so after /crs intro a fresh frame takes its place.
-    onAcknowledgeCallback = function()
-      ns.db.tipSeen = true
-      tip = nil
-    end,
+    onAcknowledgeCallback = function() ns.db.tipSeen = true end,
   }
-  target:HookScript("OnShow", function()
-    if ns.db.tipSeen then return end
+  local function ShowTip()
+    if ns.db.tipSeen or (tip and tip:IsShown()) then return end
     if not tip then
       tip = CreateFrame("Frame", nil, target, "HelpTipTemplate")
       tip.width = HelpTip.width
       tip:SetWidth(tip.width)
     end
-    tip:Init(target, info, target)
+    tip:Reset()
+    tip:Init(target, info, relativeRegion or target)
     tip:Show()
-  end)
-  return function()
+  end
+  target:HookScript("OnShow", ShowTip)
+  if target:IsVisible() then ShowTip() end
+
+  -- The player used the feature: the tip goes for good, shown or not.
+  local function Retire()
     if tip and tip.info then tip:Acknowledge() else ns.db.tipSeen = true end
   end
+  return ShowTip, Retire
 end
 
 -- The addon's page in Blizzard's Settings window, as its own canvas, copying the settings list's look
@@ -209,7 +213,7 @@ local function createFileRow(page, group, index, file, x)
     ns.db.muted[file] = not ticked
     ns.Refresh(group)
     showTick(self, ticked)
-    page.tipUsed()
+    page.retireTip()
   end)
   AttachTooltip(checkbox, function(tooltip)
     GameTooltip_SetTitle(tooltip, group.label)
@@ -265,7 +269,8 @@ local function buildPage(parent, weapon)
       column = column + 1
     end
   end
-  page.tipUsed = AttachTip(page.controls[1], TIP, HelpTip.Point.BottomEdgeCenter, HelpTip.Alignment.Left)
+  page.showTip, page.retireTip = AttachTip(page.controls[1], TIP, HelpTip.Point.BottomEdgeCenter, nil,
+    HelpTip.Alignment.Left)
 
   local playsTop = -(ROWS_TOP + rowsHeight + SECTION)
   local heading = CreateText(page, GameFontNormal)
@@ -346,6 +351,15 @@ end
 EventUtil.ContinueOnAddOnLoaded(addonName, function()
   RegisterPanel(buildSettings())
 end)
+
+-- /crs intro: the welcome line now, and the help tip again, at once where its row shows, else at the row's next show.
+function ns.ReplayIntro()
+  ns.db.tipSeen = nil
+  ns.PrintWelcome()
+  for _, page in pairs(pages) do
+    if page.controls[1]:IsVisible() then page.showTip() end
+  end
+end
 
 -- One long command and one short alias. The bare command opens the settings; help and intro are the shared words,
 -- and any other word prints the hint.

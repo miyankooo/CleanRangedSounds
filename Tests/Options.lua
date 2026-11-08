@@ -33,6 +33,9 @@ function Frame(kind, name, parent, template)
   function frame:Hide() self.shown = false end
   function frame:SetShown(shown) self.shown = shown and true or false end
   function frame:IsShown() return self.shown end
+  function frame:IsVisible()
+    return self.shown and (not self.parent or self.parent:IsVisible())
+  end
   function frame:SetChecked(checked) self.checked = checked and true or false end
   function frame:GetChecked() return self.checked end
   function frame:SetText(text) self.text = text end
@@ -52,15 +55,25 @@ function Frame(kind, name, parent, template)
     self.scripts.OnClick(self, "LeftButton")
   end
   if template == "InsetFrameTemplate" then frame.Bg = Frame("Texture", nil, frame) end
-  -- HelpTipTemplateMixin as far as the addon calls it: Init takes the info, Acknowledge runs the callback and closes.
+  -- HelpTipTemplateMixin as the addon meets it (Blizzard_SharedXML/HelpTip.lua): Init takes the info and leaves the
+  -- acknowledged mark alone, Reset clears both, Acknowledge marks and closes, and a hide with the target closes too,
+  -- running the callback only for a marked tip.
   if template == "HelpTipTemplate" then
-    frame.shown = false
-    function frame:Init(_, info) self.info = info end
-    function frame:Acknowledge()
+    frame.shown, frame.inits = false, 0
+    function frame:Init(_, info)
+      self.info = info
+      self.inits = self.inits + 1
+    end
+    function frame:Reset() self.info, self.acknowledged = nil, false end
+    function frame:Close()
       local info = self.info
       self.info = nil
-      info.onAcknowledgeCallback()
+      if info and self.acknowledged then info.onAcknowledgeCallback() end
       self:Hide()
+    end
+    function frame:Acknowledge()
+      self.acknowledged = true
+      self:Close()
     end
   end
   if template == "PanelTopTabButtonTemplate" then
@@ -230,6 +243,8 @@ local tip = Tips()[1]
 Check("the first row shows the help tip", #Tips() == 1 and tip.parent == tipTarget
   and tip.info.text == "Untick a sound here to mute it, or click its speaker to hear it first."
   and tip.info.buttonStyle == 2 and tip.info.targetPoint == 5 and tip.info.alignment == 1 and tip.width == 226)
+tipTarget.hooks.OnShow(tipTarget)
+Check("a second show while it shows leaves it alone", #Tips() == 1 and tip.inits == 1)
 
 -- The second Classic 1 on the gun page is the shot column.
 local shot = loadOrShot[2]
@@ -322,10 +337,13 @@ opened = nil
 SlashCmdList.CLEANRANGEDSOUNDS("Intro")
 Check("/crs intro prints the welcome line again", #chat == lines + 3
   and chat[lines + 3]:find("Open the <gold>|Haddon:CleanRangedSounds|h[Settings]|h</gold> or type /crs", 1, true))
+Check("and the tip at once, as its row shows, reset from its last close", ns.db.tipSeen == nil and #Tips() == 1
+  and Tips()[1] == tip and tip.acknowledged == false and tip.info)
+tip:Close()
+Check("hiding with its row leaves it unseen", #Tips() == 0 and ns.db.tipSeen == nil)
 tipTarget.hooks.OnShow(tipTarget)
-Check("and the tip shows again the next time its row shows", ns.db.tipSeen == nil and #Tips() == 1
-  and Tips()[1] ~= tip)
-Tips()[1]:Acknowledge()
+Check("so it shows the next time its row shows", #Tips() == 1)
+tip:Acknowledge()
 Check("its close button marks it seen again", #Tips() == 0 and ns.db.tipSeen == true)
 
 SlashCmdList.CLEANRANGEDSOUNDS("mute")
