@@ -172,9 +172,10 @@ local function buildPanel()
     showWeapon(shownWeapon)
   end)
 
+  -- A padding above the page's bottom edge, so the inset's border doesn't sit on it.
   local inset = UI.CreateInset(panel)
   inset:SetPoint("TOPLEFT", TITLE_LEFT, INSET_TOP)
-  inset:SetPoint("BOTTOMRIGHT", DEFAULTS_RIGHT, 0)
+  inset:SetPoint("BOTTOMRIGHT", DEFAULTS_RIGHT, UI.Space.padding)
 
   pages = {}
   for index, weapon in ipairs(ns.weapons) do
