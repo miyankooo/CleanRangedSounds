@@ -2,6 +2,12 @@ local addonName, ns = ...
 
 ns.title = C_AddOns.GetAddOnMetadata(addonName, "Title")
 
+-- Every chat line: the bracketed title in the gold of Blizzard's own chat links (NORMAL_FONT_COLOR), the message in the
+-- chat frame's own colour.
+function ns.Print(message)
+  print(NORMAL_FONT_COLOR:WrapTextInColorCode("[" .. ns.title .. "]") .. ": " .. message)
+end
+
 -- One group per weapon and sound, with every file a sound kit on Forever can pick from at random (SoundKitEntry on
 -- 70790). sets names the runs of files in order, so a row reads "Modern 4": the classic files first, then the modern
 -- sets from retail WoW, the hunter bow and crossbow variants, the blunderbuss gun shots (kit 232311) and the large gun

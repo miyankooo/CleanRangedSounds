@@ -57,10 +57,6 @@ function Frame(kind, name, parent, template)
   return frame
 end
 
-local function Color()
-  return { WrapTextInColorCode = function(_, text) return text end }
-end
-
 local onLoaded, onLogin, afterCombat = {}, {}, {}
 local inCombat, registered, opened = false, nil, nil
 local Settings = {
@@ -74,15 +70,9 @@ local Settings = {
 local env = {
   CreateFrame = Frame,
   Settings = Settings,
-  UIParent = Frame("Frame"),
-  UISpecialFrames = {},
   SlashCmdList = {},
-  GameFontNormalLarge = {}, GameFontNormal = {}, GameFontHighlight = {}, GameFontDisable = {},
-  NORMAL_FONT_COLOR = Color(), HIGHLIGHT_FONT_COLOR = Color(), GRAY_FONT_COLOR = Color(), GREEN_FONT_COLOR = Color(),
-  RED_FONT_COLOR = Color(), WARNING_FONT_COLOR = Color(), YELLOW_FONT_COLOR = Color(),
-  PANEL_BACKGROUND_COLOR = { GetRGBA = function() return 0, 0, 0, 1 end },
-  PANEL_INSET_LEFT_OFFSET = 4, PANEL_INSET_RIGHT_OFFSET = -6, PANEL_INSET_BOTTOM_BUTTON_OFFSET = 26,
-  PANEL_INSET_TOP_OFFSET = -24, PANEL_INSET_ATTIC_OFFSET = -60,
+  GameFontNormal = {}, GameFontHighlight = {}, GameFontDisable = {},
+  NORMAL_FONT_COLOR = { WrapTextInColorCode = function(_, text) return "<gold>" .. text .. "</gold>" end },
   SETTINGS_DEFAULTS = "Defaults",
   SOUNDKIT = { IG_CHARACTER_INFO_TAB = 841 },
   INVSLOT_RANGED = 18,
@@ -106,36 +96,36 @@ local env = {
   PanelTemplates_SetNumTabs = function(frame, count) frame.numTabs = count end,
   PanelTemplates_SetTab = function(frame, index) frame.selectedTab = index end,
   InCombatLockdown = function() return inCombat end,
-  FrameTemplate_SetAtticHeight = function() end,
-  MagicButton_OnLoad = function() end,
   GameTooltip_SetTitle = function() end,
   GameTooltip_AddNormalLine = function() end,
   GameTooltip_AddInstructionLine = function() end,
   GameTooltip_Hide = function() end,
-  tinsert = table.insert,
-  strmatch = string.match,
-  strupper = string.upper,
 }
 for key, value in pairs(env) do _G[key] = value end
 
 -- Any other global the addon reads is a missing stub, except the ones that start out unset.
-local unset = { LibStub = true, CleanRangedSoundsDB = true }
+local unset = { CleanRangedSoundsDB = true }
 setmetatable(_G, { __index = function(_, key)
   if not unset[key] then error("unstubbed global " .. tostring(key), 2) end
 end })
 
+-- Loads the addon's files in the toc's order, so a stale or missing toc line fails here.
 local ns = {}
-for _, path in ipairs({ "Libs/LibStub/LibStub.lua", "Libs/LibNativeUI-1.0/LibNativeUI-1.0.lua", "Core/Sounds.lua",
-  "Core/Release.lua", "UI/Options.lua" }) do
-  assert(loadfile(path))("CleanRangedSounds", ns)
+for line in io.lines("CleanRangedSounds.toc") do
+  local path = line:match("^([^#%s].-%.lua)%s*$")
+  if path then assert(loadfile((path:gsub("\\", "/"))))("CleanRangedSounds", ns) end
 end
 rawset(_G, "CleanRangedSoundsDB", nil)
 for _, callback in ipairs(onLoaded) do callback() end
 for _, callback in ipairs(onLogin) do callback() end
 
+-- The addon's chat lines go to chat, the checks' own lines to the terminal.
+local write, chat = print, {}
+print = function(line) chat[#chat + 1] = line end
+
 local failures = 0
 local function Check(label, condition)
-  print((condition and "  pass  " or "  FAIL  ") .. label)
+  write((condition and "  pass  " or "  FAIL  ") .. label)
   if not condition then failures = failures + 1 end
 end
 
@@ -155,6 +145,8 @@ Check("the page is registered under AddOns at load", panel and registered.added
 inCombat = true
 SlashCmdList.CLEANRANGEDSOUNDS("")
 Check("/crs in combat waits for combat to end", opened == nil and #afterCombat == 1)
+Check("and says so in one line with the gold title", #chat == 1
+  and chat[1] == "<gold>[Clean Ranged Sounds]</gold>: Opens after combat.")
 inCombat = false
 afterCombat[1]()
 Check("then opens Settings on the page", opened == 14)
@@ -214,5 +206,5 @@ panel.Tabs[1]:Click()
 panel.OnRefresh()
 Check("each showing opens on the equipped weapon again", panel.selectedTab == 3)
 
-print(failures == 0 and "Options: all checks passed" or ("Options: " .. failures .. " failed"))
+write(failures == 0 and "Options: all checks passed" or ("Options: " .. failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

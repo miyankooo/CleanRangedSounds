@@ -7,61 +7,157 @@ local addonName, ns = ...
 -- so the search no longer reads this addon's rows, which got it named in Blizzard's IsUserOAuthed and raid preview
 -- errors. The category itself is still the addon's.
 
-local UI = LibStub("LibNativeUI-1.0")
+-- Spacing and sizes on the 4 px grid.
+local TIGHT, GAP, PADDING, SECTION = 4, 8, 16, 24
+local ROW, HEADING, ICON = 24, 16, 16
 
--- The header of SettingsListTemplate (Blizzard_SettingsList.xml:6-32): the title, the divider 50 px down and Defaults
--- in the top-right corner. The title keeps that template's GameFontHighlightHuge, so this page reads like every other.
-local TITLE_LEFT, TITLE_TOP = 7, -22
+-- The inset spans from the header's title on the left to its Defaults button on the right (BuildPanel).
+local TITLE_LEFT, DEFAULTS_RIGHT = 7, -36
 local DIVIDER_TOP = -50
-local DEFAULTS_WIDTH, DEFAULTS_HEIGHT = 96, 22
-local DEFAULTS_RIGHT, DEFAULTS_TOP = -36, -16
 
 -- PanelTabButtonTemplate is 32 px tall (Mainline/SharedUIPanelTemplates.xml:933). The top variant draws its art in the
 -- bottom three quarters, so the tabs' open edge sits on the inset and their text centres 12 px above it.
 local TAB_HEIGHT = 32
 local TAB_ART_MIDDLE = 12
-local INSET_TOP = DIVIDER_TOP - UI.Space.padding - TAB_HEIGHT
+local INSET_TOP = DIVIDER_TOP - PADDING - TAB_HEIGHT
 
 -- A row is the checkbox, its label wide enough for "Classic 3", then the speaker.
-local ROW = UI.Size.row
 local LABEL_WIDTH = 72
-local SPEAKER_LEFT = ROW + UI.Space.tight + LABEL_WIDTH + UI.Space.tight
-local COLUMN_PITCH = SPEAKER_LEFT + UI.Size.icon + UI.Space.section
+local SPEAKER_LEFT = ROW + TIGHT + LABEL_WIDTH + TIGHT
+local COLUMN_PITCH = SPEAKER_LEFT + ICON + SECTION
 
 -- A column's heading line and the gap under it, above its first row.
-local ROWS_TOP = UI.Size.heading + UI.Space.gap
+local ROWS_TOP = HEADING + GAP
 
--- The speaker of Blizzard's sound rows (17 px in the Forever AtlasInfo), lit on hover the way the Cooldown Manager's
--- play-sample button is (Blizzard_CooldownViewer/CooldownViewerAlert.lua CooldownViewerAlert_SetupTypeButton).
-local SPEAKER = "common-dropdown-icon-sound-on"
-local SPEAKER_HOVER_ALPHA = 0.4
+-- Text in a font role: GameFontNormal (heading, gold), GameFontHighlight (body, white), GameFontDisable (muted,
+-- grey), GameFontNormalLarge (title, 16 px, a dialog's subject line only).
+local function CreateText(parent, fontObject, layer)
+  local text = parent:CreateFontString(nil, layer or "ARTWORK")
+  text:SetFontObject(fontObject or GameFontHighlight)
+  text:SetJustifyH("LEFT")
+  return text
+end
 
-local panel, pages, categoryID
+-- A GameTooltip owned by the hovered frame, filled with Blizzard's GameTooltip_* line helpers. A frame whose
+-- template already sets OnEnter gets HookScript instead.
+local function AttachTooltip(frame, fill, anchor)
+  frame:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, anchor or "ANCHOR_RIGHT")
+    fill(GameTooltip, self)
+    GameTooltip:Show()
+  end)
+  frame:SetScript("OnLeave", GameTooltip_Hide)
+end
+
+-- CheckboxWithLabelTemplate: the minimal art Blizzard's Settings use, at the 24 px AddonList gives it
+-- (Blizzard_AddOnList/AddonList.xml:73-74). The label joins the hit rect, so a click on it toggles the box.
+local function CreateCheckbox(parent, label)
+  local checkbox = CreateFrame("CheckButton", nil, parent, "CheckboxWithLabelTemplate")
+  checkbox:SetSize(24, 24)
+  checkbox.Text:SetFontObject(GameFontHighlight)
+  checkbox.Text:ClearAllPoints()
+  checkbox.Text:SetPoint("LEFT", checkbox, "RIGHT", 4, 0)
+  checkbox.Text:SetText(label)
+  checkbox:SetHitRectInsets(0, -(4 + checkbox.Text:GetStringWidth()), 0, 0)
+  return checkbox
+end
+
+-- A play button for a sound: the dropdown speaker atlas, 16 px, with a soft ADD highlight.
+local function CreateSoundButton(parent, play)
+  local button = CreateFrame("Button", nil, parent)
+  button:SetSize(16, 16)
+  button:SetNormalAtlas("common-dropdown-icon-sound-on")
+  button:SetHighlightAtlas("common-dropdown-icon-sound-on", "ADD")
+  button:GetHighlightTexture():SetAlpha(0.4)
+  button:SetScript("OnClick", play)
+  return button
+end
+
+-- An inset's border on the stone without its marble tile, as the Auction House category list
+-- (Blizzard_AuctionHouseCategoriesList.xml:60). For a status box in the button bar or a block on a settings page,
+-- never on the brown panel.
+local function CreateInset(parent)
+  local inset = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+  inset.Bg:Hide()
+  return inset
+end
+
+-- Blizzard's top tabs, the ones the wardrobe uses, standing on the top edge of the content they switch, the first
+-- 16 in from its left. PanelTemplates anchors each later tab after the first and swaps the selected art.
+local function CreateTabs(owner, content, labels, onSelect)
+  for index, label in ipairs(labels) do
+    local tab = CreateFrame("Button", nil, owner, "PanelTopTabButtonTemplate")
+    tab:SetID(index)
+    tab:SetText(label)
+    PanelTemplates_TabResize(tab)
+    tab:SetScript("OnClick", function()
+      PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+      PanelTemplates_SetTab(owner, index)
+      onSelect(index)
+    end)
+    if index == 1 then tab:SetPoint("BOTTOMLEFT", content, "TOPLEFT", 16, 0) end
+  end
+  PanelTemplates_SetNumTabs(owner, #labels)
+end
+
+-- The addon's page in Blizzard's Settings window, as its own canvas, copying the settings list's look
+-- (Blizzard_SettingsList.xml:14-30, Blizzard_SettingControls.xml, Blizzard_SettingControls.lua). Never a settings
+-- list: a pick in a list dropdown runs addon code in Blizzard's pooled controls and taints its settings until /reload.
+local categoryID
+
+local function BuildPanel(restoreDefaults)
+  local panel = CreateFrame("Frame")
+  local title = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightHuge")
+  title:SetJustifyH("LEFT")
+  title:SetPoint("TOPLEFT", 7, -22)
+  title:SetText(ns.title)
+  local divider = panel:CreateTexture(nil, "ARTWORK")
+  divider:SetAtlas("Options_HorizontalDivider", true)
+  divider:SetPoint("TOP", 0, -50)
+  local defaults = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+  defaults:SetSize(96, 22)
+  defaults:SetPoint("TOPRIGHT", -36, -16)
+  defaults:SetText(SETTINGS_DEFAULTS)
+  defaults:SetScript("OnClick", restoreDefaults)
+  return panel
+end
+
+local function RegisterPanel(panel)
+  local category = Settings.RegisterCanvasLayoutCategory(panel, ns.title)
+  Settings.RegisterAddOnCategory(category)
+  categoryID = category:GetID()
+end
+
+-- Opening in combat waits for combat to end, since the settings panel's open path has restrictions.
+local waitingForCombat = false
+function ns.OpenSettings()
+  if not categoryID then return end
+  if InCombatLockdown() then
+    ns.Print("Opens after combat.")
+    if not waitingForCombat then
+      waitingForCombat = true
+      EventUtil.RegisterOnceFrameEventAndCallback("PLAYER_REGEN_ENABLED", function()
+        waitingForCombat = false
+        ns.OpenSettings()
+      end)
+    end
+    return
+  end
+  Settings.OpenToCategory(categoryID)
+end
+
+local panel, pages
 local shownWeapon = ns.weapons[1].key
 
 -- A ticked row plays, an unticked one reads grey like a disabled option.
 local function showTick(checkbox, ticked)
   checkbox:SetChecked(ticked)
-  checkbox.Text:SetFontObject(ticked and UI.Font.body or UI.Font.muted)
-end
-
-local function createSpeaker(parent, file)
-  local speaker = CreateFrame("Button", nil, parent)
-  speaker:SetSize(UI.Size.icon, UI.Size.icon)
-  speaker:SetNormalAtlas(SPEAKER)
-  speaker:SetHighlightAtlas(SPEAKER, "ADD")
-  speaker:GetHighlightTexture():SetAlpha(SPEAKER_HOVER_ALPHA)
-  speaker:SetScript("OnClick", function() ns.PlayFile(file) end)
-  UI.AttachTooltip(speaker, function(tooltip)
-    GameTooltip_SetTitle(tooltip, "Play")
-    GameTooltip_AddNormalLine(tooltip, "Plays this sound once, also while it is unticked.")
-  end)
-  return speaker
+  checkbox.Text:SetFontObject(ticked and GameFontHighlight or GameFontDisable)
 end
 
 -- One file of a group: tick it to let it play. The setter only touches this group, so a click applies at once.
 local function createFileRow(page, group, index, file, x)
-  local checkbox = UI.CreateCheckbox(page, ns.FileLabel(group, index))
+  local checkbox = CreateCheckbox(page, ns.FileLabel(group, index))
   checkbox:SetPoint("TOPLEFT", x, -(ROWS_TOP + (index - 1) * ROW))
   checkbox:SetScript("OnClick", function(self)
     local ticked = self:GetChecked()
@@ -69,25 +165,30 @@ local function createFileRow(page, group, index, file, x)
     ns.Refresh(group)
     showTick(self, ticked)
   end)
-  UI.AttachTooltip(checkbox, function(tooltip)
+  AttachTooltip(checkbox, function(tooltip)
     GameTooltip_SetTitle(tooltip, group.label)
     GameTooltip_AddNormalLine(tooltip, group.tooltip)
   end)
   checkbox.update = function() showTick(checkbox, not ns.db.muted[file]) end
 
-  createSpeaker(page, file):SetPoint("LEFT", checkbox, "LEFT", SPEAKER_LEFT, 0)
+  local speaker = CreateSoundButton(page, function() ns.PlayFile(file) end)
+  speaker:SetPoint("LEFT", checkbox, "LEFT", SPEAKER_LEFT, 0)
+  AttachTooltip(speaker, function(tooltip)
+    GameTooltip_SetTitle(tooltip, "Play")
+    GameTooltip_AddNormalLine(tooltip, "Plays this sound once, also while it is unticked.")
+  end)
   return checkbox
 end
 
 -- Which shot sounds your own shots with this weapon pick from. Ticking several mixes them.
 local function createPlaysRow(page, weapon, sound, x, y)
-  local checkbox = UI.CreateCheckbox(page, sound.label .. " Shots")
+  local checkbox = CreateCheckbox(page, sound.label .. " Shots")
   checkbox:SetPoint("TOPLEFT", x, y)
   checkbox:SetScript("OnClick", function(self)
     ns.db.plays[weapon.key][sound.key] = self:GetChecked()
     ns.Refresh(ns.shotGroups[weapon.key])
   end)
-  UI.AttachTooltip(checkbox, function(tooltip)
+  AttachTooltip(checkbox, function(tooltip)
     GameTooltip_SetTitle(tooltip, sound.label .. " Shots")
     GameTooltip_AddNormalLine(tooltip, ("Your own %s shots play the %s shots you ticked. Tick several to mix them.")
       :format(weapon.key, sound.key))
@@ -99,8 +200,8 @@ end
 -- One weapon's tab: a column per sound, then which shots your own weapon plays and what that costs.
 local function buildPage(parent, weapon)
   local page = CreateFrame("Frame", nil, parent)
-  page:SetPoint("TOPLEFT", UI.Space.padding, -UI.Space.padding)
-  page:SetPoint("BOTTOMRIGHT", -UI.Space.padding, UI.Space.padding)
+  page:SetPoint("TOPLEFT", PADDING, -PADDING)
+  page:SetPoint("BOTTOMRIGHT", -PADDING, PADDING)
   page:Hide()
   page.controls = {}
 
@@ -108,7 +209,7 @@ local function buildPage(parent, weapon)
   for _, group in ipairs(ns.groups) do
     if group.weapon == weapon.key then
       local x = column * COLUMN_PITCH
-      local heading = UI.CreateText(page, "heading")
+      local heading = CreateText(page, GameFontNormal)
       heading:SetPoint("TOPLEFT", x, 0)
       heading:SetText(group.label)
       for index, file in ipairs(group.files) do
@@ -119,8 +220,8 @@ local function buildPage(parent, weapon)
     end
   end
 
-  local playsTop = -(ROWS_TOP + rowsHeight + UI.Space.section)
-  local heading = UI.CreateText(page, "heading")
+  local playsTop = -(ROWS_TOP + rowsHeight + SECTION)
+  local heading = CreateText(page, GameFontNormal)
   heading:SetPoint("TOPLEFT", 0, playsTop)
   heading:SetText(("Your %s Shots Play"):format(weapon.label))
   for index, sound in ipairs(ns.weapons) do
@@ -129,8 +230,8 @@ local function buildPage(parent, weapon)
   end
 
   -- Replacing mutes the whole shot group for the game, since its own pick cannot be read (Core/Sounds.lua KeptFiles).
-  local note = UI.CreateText(page, "muted")
-  note:SetPoint("TOPLEFT", 0, playsTop - ROWS_TOP - ROW - UI.Space.tight)
+  local note = CreateText(page, GameFontDisable)
+  note:SetPoint("TOPLEFT", 0, playsTop - ROWS_TOP - ROW - TIGHT)
   note:SetPoint("RIGHT")
   note:SetWordWrap(true)
   note:SetText(("Your own shots play one of the ticked shots. Untick some but not all of them, or pick another"
@@ -150,52 +251,31 @@ local function showWeapon(key)
   end
 end
 
-local function buildPanel()
-  panel = CreateFrame("Frame")
+-- Defaults resets the weapon you see, as Blizzard's Defaults resets the page you see.
+local function restoreDefaults()
+  ns.ResetWeapon(shownWeapon)
+  showWeapon(shownWeapon)
+end
+
+local function buildSettings()
+  panel = BuildPanel(restoreDefaults)
   panel:Hide()
 
-  local title = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightHuge")
-  title:SetPoint("TOPLEFT", TITLE_LEFT, TITLE_TOP)
-  title:SetText(ns.title)
-
-  local divider = panel:CreateTexture(nil, "ARTWORK")
-  divider:SetAtlas("Options_HorizontalDivider", true)
-  divider:SetPoint("TOP", 0, DIVIDER_TOP)
-
-  -- Defaults resets the weapon you see, as Blizzard's Defaults resets the page you see.
-  local defaults = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-  defaults:SetSize(DEFAULTS_WIDTH, DEFAULTS_HEIGHT)
-  defaults:SetPoint("TOPRIGHT", DEFAULTS_RIGHT, DEFAULTS_TOP)
-  defaults:SetText(SETTINGS_DEFAULTS)
-  defaults:SetScript("OnClick", function()
-    ns.ResetWeapon(shownWeapon)
-    showWeapon(shownWeapon)
-  end)
-
   -- A padding above the page's bottom edge, so the inset's border doesn't sit on it.
-  local inset = UI.CreateInset(panel)
+  local inset = CreateInset(panel)
   inset:SetPoint("TOPLEFT", TITLE_LEFT, INSET_TOP)
-  inset:SetPoint("BOTTOMRIGHT", DEFAULTS_RIGHT, UI.Space.padding)
+  inset:SetPoint("BOTTOMRIGHT", DEFAULTS_RIGHT, PADDING)
 
   pages = {}
+  local labels = {}
   for index, weapon in ipairs(ns.weapons) do
     pages[weapon.key] = buildPage(inset, weapon)
-
-    -- The top tabs of the Appearances collection, standing on the inset's top edge.
-    local tab = CreateFrame("Button", nil, panel, "PanelTopTabButtonTemplate")
-    tab:SetID(index)
-    tab:SetText(weapon.label)
-    PanelTemplates_TabResize(tab)
-    tab:SetScript("OnClick", function()
-      PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
-      showWeapon(weapon.key)
-    end)
-    if index == 1 then tab:SetPoint("BOTTOMLEFT", inset, "TOPLEFT", UI.Space.padding, 0) end
+    labels[index] = weapon.label
   end
-  PanelTemplates_SetNumTabs(panel, #ns.weapons)
+  CreateTabs(panel, inset, labels, function(index) showWeapon(ns.weapons[index].key) end)
 
-  local help = UI.CreateText(panel, "body")
-  help:SetPoint("RIGHT", inset, "TOPRIGHT", -UI.Space.padding, TAB_ART_MIDDLE)
+  local help = CreateText(panel, GameFontHighlight)
+  help:SetPoint("RIGHT", inset, "TOPRIGHT", -PADDING, TAB_ART_MIDDLE)
   help:SetText("Ticked sounds play. Unticked ones are muted for everyone.")
 
   -- Blizzard calls this through securecallfunction each time the page is shown. It opens on the weapon you have
@@ -208,45 +288,24 @@ end
 
 -- Registered at ADDON_LOADED, the way Blizzard's implementation guide does it (Blizzard_ImplementationReadme.lua).
 EventUtil.ContinueOnAddOnLoaded(addonName, function()
-  local category = Settings.RegisterCanvasLayoutCategory(buildPanel(), ns.title)
-  Settings.RegisterAddOnCategory(category)
-  categoryID = category:GetID()
+  RegisterPanel(buildSettings())
 end)
 
-local waitingForCombat = false
-
-local function OpenSettings()
-  if not categoryID then return end
-
-  -- C_SettingsUtil.OpenSettingsPanel has restrictions the source does not spell out, so an open in
-  -- combat waits for combat to end instead of failing silently.
-  if InCombatLockdown() then
-    UI.Print(ns.title, "Opens after combat.")
-    if not waitingForCombat then
-      waitingForCombat = true
-      EventUtil.RegisterOnceFrameEventAndCallback("PLAYER_REGEN_ENABLED", function()
-        waitingForCombat = false
-        OpenSettings()
-      end)
-    end
-    return
-  end
-
-  Settings.OpenToCategory(categoryID)
+SLASH_CLEANRANGEDSOUNDS1, SLASH_CLEANRANGEDSOUNDS2 = "/cleanrangedsounds", "/crs"
+SlashCmdList.CLEANRANGEDSOUNDS = function()
+  ns.OpenSettings()
 end
-
-UI.RegisterSlash("CLEANRANGEDSOUNDS", { "/cleanrangedsounds", "/crs" }, OpenSettings)
 
 -- Addon Compartment entry points named in the toc. Blizzard calls them with the addon name first, then the menu row.
 function CleanRangedSounds_CompartmentClick()
-  OpenSettings()
+  ns.OpenSettings()
 end
 
 function CleanRangedSounds_CompartmentEnter(_, menuButton)
-  UI.ShowTooltip(menuButton, function(tooltip)
-    GameTooltip_SetTitle(tooltip, ns.title)
-    GameTooltip_AddInstructionLine(tooltip, "Click to open the settings.")
-  end, "ANCHOR_LEFT")
+  GameTooltip:SetOwner(menuButton, "ANCHOR_LEFT")
+  GameTooltip_SetTitle(GameTooltip, ns.title)
+  GameTooltip_AddInstructionLine(GameTooltip, "Click to open the settings.")
+  GameTooltip:Show()
 end
 
 function CleanRangedSounds_CompartmentLeave()
