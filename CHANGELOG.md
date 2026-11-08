@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/miyankooo/CleanRangedSounds/compare/v1.1.0...v1.1.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* The settings box keeps a margin above the bottom of the page
+
 ## [1.1.0](https://github.com/miyankooo/CleanRangedSounds/compare/v1.0.0...v1.1.0) (2026-11-08)
 
 
