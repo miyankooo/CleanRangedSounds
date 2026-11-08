@@ -124,6 +124,7 @@ local env = {
   PanelTemplates_SetNumTabs = function(frame, count) frame.numTabs = count end,
   PanelTemplates_SetTab = function(frame, index) frame.selectedTab = index end,
   InCombatLockdown = function() return inCombat end,
+  strtrim = function(text) return (text:gsub("^%s+", ""):gsub("%s+$", "")) end,
   GameTooltip_SetTitle = function() end,
   GameTooltip_AddNormalLine = function() end,
   GameTooltip_AddInstructionLine = function() end,
@@ -272,6 +273,32 @@ listener.scripts.OnEvent(listener, "UNIT_SPELLCAST_SUCCEEDED", "player", "cast",
 Check("an Auto Shot with a muted gun shot plays one kept file", #played == before + 1 and played[#played] ~= 567721)
 listener.scripts.OnEvent(listener, "UNIT_SPELLCAST_SUCCEEDED", "player", "cast", SECRET)
 Check("a secret spell ID plays nothing", #played == before + 1)
+
+-- The shared slash words.
+local HELP = "<gold>[Clean Ranged Sounds]</gold>: Type /crs for the settings, /crs intro to see the welcome line and "
+  .. "the tip again, or /crs help for this list."
+local lines = #chat
+SlashCmdList.CLEANRANGEDSOUNDS("help")
+SlashCmdList.CLEANRANGEDSOUNDS(" ? ")
+Check("/crs help and /crs ? name every command in one line", #chat == lines + 2 and chat[lines + 1] == HELP
+  and chat[lines + 2] == HELP)
+
+opened = nil
+SlashCmdList.CLEANRANGEDSOUNDS("Intro")
+Check("/crs intro prints the welcome line again", #chat == lines + 3
+  and chat[lines + 3]:find("Open the <gold>|Haddon:CleanRangedSounds|h[Settings]|h</gold> or type /crs", 1, true))
+tipTarget.hooks.OnShow(tipTarget)
+Check("and the tip shows again the next time its row shows", ns.db.tipSeen == nil and #Tips() == 1
+  and Tips()[1] ~= tip)
+Tips()[1]:Acknowledge()
+Check("its close button marks it seen again", #Tips() == 0 and ns.db.tipSeen == true)
+
+SlashCmdList.CLEANRANGEDSOUNDS("mute")
+Check("an unknown word prints the hint and opens nothing", opened == nil and #chat == lines + 4
+  and chat[lines + 4] == "<gold>[Clean Ranged Sounds]</gold>: Unknown command. Type /crs help for the list.")
+
+Check("both commands are registered", SLASH_CLEANRANGEDSOUNDS1 == "/cleanrangedsounds"
+  and SLASH_CLEANRANGEDSOUNDS2 == "/crs")
 
 write(failures == 0 and "Options: all checks passed" or ("Options: " .. failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

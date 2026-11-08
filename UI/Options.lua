@@ -337,9 +337,21 @@ EventUtil.ContinueOnAddOnLoaded(addonName, function()
   RegisterPanel(buildSettings())
 end)
 
+-- One long command and one short alias. The bare command opens the settings; help and intro are the shared words,
+-- and any other word prints the hint.
 SLASH_CLEANRANGEDSOUNDS1, SLASH_CLEANRANGEDSOUNDS2 = "/cleanrangedsounds", "/crs"
-SlashCmdList.CLEANRANGEDSOUNDS = function()
-  ns.OpenSettings()
+SlashCmdList.CLEANRANGEDSOUNDS = function(message)
+  local command = strtrim(message or ""):lower()
+  if command == "" then
+    ns.OpenSettings()
+  elseif command == "help" or command == "?" then
+    ns.Print("Type /crs for the settings, /crs intro to see the welcome line and the tip again, or /crs help for "
+      .. "this list.")
+  elseif command == "intro" then
+    ns.ReplayIntro()
+  else
+    ns.Print("Unknown command. Type /crs help for the list.")
+  end
 end
 
 -- Addon Compartment entry points named in the toc. Blizzard calls them with the addon name first, then the menu row.
