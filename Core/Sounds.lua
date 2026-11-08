@@ -8,6 +8,15 @@ function ns.Print(message)
   print(NORMAL_FONT_COLOR:WrapTextInColorCode("[" .. ns.title .. "]") .. ": " .. message)
 end
 
+-- Whether a value is safe to read and compare. issecretvalue may raise for addon code handed a secret, and a raise can
+-- only mean secret. nil never reaches it.
+function ns.CanAccess(value)
+  if value == nil then return true end
+
+  local ok, secret = pcall(issecretvalue, value)
+  return ok and not secret
+end
+
 -- One group per weapon and sound, with every file a sound kit on Forever can pick from at random (SoundKitEntry on
 -- 70790). sets names the runs of files in order, so a row reads "Modern 4": the classic files first, then the modern
 -- sets from retail WoW, the hunter bow and crossbow variants, the blunderbuss gun shots (kit 232311) and the large gun

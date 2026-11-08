@@ -57,6 +57,7 @@ function Frame(kind, name, parent, template)
   return frame
 end
 
+local SECRET = {}
 local onLoaded, onLogin, afterCombat = {}, {}, {}
 local inCombat, registered, opened = false, nil, nil
 local Settings = {
@@ -87,7 +88,7 @@ local env = {
   C_Spell = { GetSpellName = function(id) return "Spell " .. id end },
   C_Item = { GetItemInfoInstant = function() return nil, nil, nil, nil, nil, 2, 3 end },
   GetInventoryItemID = function() return 2099 end,
-  issecretvalue = function() return false end,
+  issecretvalue = function(value) return value == SECRET end,
   MuteSoundFile = function(file) engineMuted[file] = true end,
   UnmuteSoundFile = function(file) engineMuted[file] = nil end,
   PlaySoundFile = function(file) played[#played + 1] = file end,
@@ -205,6 +206,18 @@ Check("one speaker per gun sound", speakers == 15)
 panel.Tabs[1]:Click()
 panel.OnRefresh()
 Check("each showing opens on the equipped weapon again", panel.selectedTab == 3)
+
+-- Your own shots, through Core/Release.lua's listener: one kept file per shot, and nothing for a secret spell ID.
+local listener
+for _, frame in ipairs(stubs) do
+  if frame.scripts.OnEvent then listener = frame end
+end
+shot:Click()
+local before = #played
+listener.scripts.OnEvent(listener, "UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 75)
+Check("an Auto Shot with a muted gun shot plays one kept file", #played == before + 1 and played[#played] ~= 567721)
+listener.scripts.OnEvent(listener, "UNIT_SPELLCAST_SUCCEEDED", "player", "cast", SECRET)
+Check("a secret spell ID plays nothing", #played == before + 1)
 
 write(failures == 0 and "Options: all checks passed" or ("Options: " .. failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)
