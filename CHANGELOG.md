@@ -5,9 +5,10 @@
 
 ### Features
 
-* add the modern gun shots, the heavy gun shots and the bow aim creak ([3c8f60e](https://github.com/miyankooo/CleanRangedSounds/commit/3c8f60e9288dfee63ecb2eedabf72bb65f9fe69a))
-* muted shot sounds are always replaced, so your own shots never go silent ([3c8f60e](https://github.com/miyankooo/CleanRangedSounds/commit/3c8f60e9288dfee63ecb2eedabf72bb65f9fe69a))
-* the settings page lists every sound in one tab per weapon ([3c8f60e](https://github.com/miyankooo/CleanRangedSounds/commit/3c8f60e9288dfee63ecb2eedabf72bb65f9fe69a))
+* Settings now have a tab per weapon, with every sound in a column per sound type. Tick a sound to let it play, click its speaker to hear it
+* New sounds: the modern and heavy gun shots and the bow aim creak. Untick the classic shots to hear only the modern ones
+* The settings open on the weapon you have equipped, and Defaults resets only that weapon
+* Your own shots always play one of the shot sounds you kept, so the Replace Muted Shot Sounds option is gone
 
 ## 1.0.0 (2026-11-05)
 
