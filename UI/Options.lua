@@ -13,13 +13,16 @@ local ROW, HEADING, ICON = 24, 16, 16
 
 -- The inset spans from the header's title on the left to its Defaults button on the right (BuildPanel).
 local TITLE_LEFT, DEFAULTS_RIGHT = 7, -36
-local DIVIDER_TOP = -50
 
 -- PanelTabButtonTemplate is 32 px tall (Mainline/SharedUIPanelTemplates.xml:933). The top variant draws its art in the
--- bottom three quarters, so the tabs' open edge sits on the inset and their text centres 12 px above it.
+-- bottom three quarters, so the tabs' open edge sits on the inset and their text centres 12 px above it. The tabs hang
+-- below the intro as a settings page's rows do.
 local TAB_HEIGHT = 32
 local TAB_ART_MIDDLE = 12
-local INSET_TOP = DIVIDER_TOP - PADDING - TAB_HEIGHT
+
+-- What the addon does, where it works and what stays the game's own. Two lines at most, so the tallest tab still fits.
+local INTRO = "Mutes the bow creak before each shot and any other bow, crossbow or gun sound you untick, for every"
+  .. " player and creature. Wand and spell sounds stay the game's own."
 
 -- A row is the checkbox, its label wide enough for "Classic 3", then the speaker.
 local LABEL_WIDTH = 72
@@ -103,9 +106,10 @@ end
 -- The addon's page in Blizzard's Settings window, as its own canvas, copying the settings list's look
 -- (Blizzard_SettingsList.xml:14-30, Blizzard_SettingControls.xml, Blizzard_SettingControls.lua). Never a settings
 -- list: a pick in a list dropdown runs addon code in Blizzard's pooled controls and taints its settings until /reload.
+local LABEL_X, INTRO_Y, INTRO_GAP = 37, -64, 16
 local categoryID
 
-local function BuildPanel(restoreDefaults)
+local function BuildPanel(introText, restoreDefaults)
   local panel = CreateFrame("Frame")
   local title = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightHuge")
   title:SetJustifyH("LEFT")
@@ -119,6 +123,10 @@ local function BuildPanel(restoreDefaults)
   defaults:SetPoint("TOPRIGHT", -36, -16)
   defaults:SetText(SETTINGS_DEFAULTS)
   defaults:SetScript("OnClick", restoreDefaults)
+  panel.intro = CreateText(panel, GameFontHighlight)
+  panel.intro:SetPoint("TOPLEFT", LABEL_X, INTRO_Y)
+  panel.intro:SetPoint("TOPRIGHT", -LABEL_X, INTRO_Y)
+  panel.intro:SetText(introText)
   return panel
 end
 
@@ -258,12 +266,12 @@ local function restoreDefaults()
 end
 
 local function buildSettings()
-  panel = BuildPanel(restoreDefaults)
+  panel = BuildPanel(INTRO, restoreDefaults)
   panel:Hide()
 
   -- A padding above the page's bottom edge, so the inset's border doesn't sit on it.
   local inset = CreateInset(panel)
-  inset:SetPoint("TOPLEFT", TITLE_LEFT, INSET_TOP)
+  inset:SetPoint("TOPLEFT", panel.intro, "BOTTOMLEFT", TITLE_LEFT - LABEL_X, -(INTRO_GAP + TAB_HEIGHT))
   inset:SetPoint("BOTTOMRIGHT", DEFAULTS_RIGHT, PADDING)
 
   pages = {}

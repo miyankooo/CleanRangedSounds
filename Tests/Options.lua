@@ -154,6 +154,8 @@ local panel = registered and registered.frame
 Check("the page is registered under AddOns at load", panel and registered.added
   and registered.name == "Clean Ranged Sounds")
 
+Check("the page opens with an intro under the divider", panel.intro and panel.intro.text:find("^Mutes the bow creak"))
+
 Check("the first login prints the welcome line with the Settings link", #chat == 1
   and chat[1]:find("<gold>|Haddon:CleanRangedSounds|h[Settings]|h</gold>", 1, true))
 
