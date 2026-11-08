@@ -24,6 +24,10 @@ function Frame(kind, name, parent, template)
   local frame = NewFrame(kind, parent)
   frame.template = template
   function frame:SetScript(event, handler) self.scripts[event] = handler end
+  function frame:HookScript(event, handler)
+    self.hooks = self.hooks or {}
+    self.hooks[event] = handler
+  end
   function frame:GetScript(event) return self.scripts[event] end
   function frame:Show() self.shown = true end
   function frame:Hide() self.shown = false end
@@ -48,6 +52,17 @@ function Frame(kind, name, parent, template)
     self.scripts.OnClick(self, "LeftButton")
   end
   if template == "InsetFrameTemplate" then frame.Bg = Frame("Texture", nil, frame) end
+  -- HelpTipTemplateMixin as far as the addon calls it: Init takes the info, Acknowledge runs the callback and closes.
+  if template == "HelpTipTemplate" then
+    frame.shown = false
+    function frame:Init(_, info) self.info = info end
+    function frame:Acknowledge()
+      local info = self.info
+      self.info = nil
+      info.onAcknowledgeCallback()
+      self:Hide()
+    end
+  end
   if template == "PanelTopTabButtonTemplate" then
     parent.Tabs = rawget(parent, "Tabs") or {}
     parent.Tabs[#parent.Tabs + 1] = frame
@@ -87,6 +102,7 @@ local env = {
     end,
   },
   SOUNDKIT = { IG_CHARACTER_INFO_TAB = 841 },
+  HelpTip = { ButtonStyle = { Close = 2 }, Point = { BottomEdgeCenter = 5 }, Alignment = { Left = 1 }, width = 226 },
   INVSLOT_RANGED = 18,
   Enum = { ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Bows = 2, Guns = 3, Crossbow = 18 } },
   GameTooltip = Frame("GameTooltip"),
@@ -193,9 +209,27 @@ end
 Check("rows start ticked where the sound plays", #loadOrShot == 2 and loadOrShot[1]:GetChecked()
   and loadOrShot[2]:GetChecked())
 
+-- What the client does when the gun page shows: its first row, Load Classic 1, shows the help tip.
+local function Tips()
+  local tips = {}
+  for _, frame in ipairs(stubs) do
+    if frame.template == "HelpTipTemplate" and frame.shown then tips[#tips + 1] = frame end
+  end
+  return tips
+end
+local tipTarget = loadOrShot[1]
+tipTarget.hooks.OnShow(tipTarget)
+local tip = Tips()[1]
+Check("the first row shows the help tip", #Tips() == 1 and tip.parent == tipTarget
+  and tip.info.text == "Untick a sound here to mute it, or click its speaker to hear it first."
+  and tip.info.buttonStyle == 2 and tip.info.targetPoint == 5 and tip.info.alignment == 1 and tip.width == 226)
+
 -- The second Classic 1 on the gun page is the shot column.
 local shot = loadOrShot[2]
 shot:Click()
+Check("unticking any sound closes the tip for good", #Tips() == 0 and ns.db.tipSeen == true)
+tipTarget.hooks.OnShow(tipTarget)
+Check("and it stays away when the row shows again", #Tips() == 0)
 Check("unticking a gun shot mutes it and replaces the group", ns.db.muted[567721] == true
   and engineMuted[567721] and engineMuted[567718] and ns.KeptFiles(ns.shotGroups.gun)
   and #ns.KeptFiles(ns.shotGroups.gun) == 11)

@@ -32,6 +32,9 @@ local COLUMN_PITCH = SPEAKER_LEFT + ICON + SECTION
 -- A column's heading line and the gap under it, above its first row.
 local ROWS_TOP = HEADING + GAP
 
+-- The help tip points up at each tab's first row from below, its arrow at the left end, so it stays on the page.
+local TIP = "Untick a sound here to mute it, or click its speaker to hear it first."
+
 -- Text in a font role: GameFontNormal (heading, gold), GameFontHighlight (body, white), GameFontDisable (muted,
 -- grey), GameFontNormalLarge (title, 16 px, a dialog's subject line only).
 local function CreateText(parent, fontObject, layer)
@@ -103,6 +106,39 @@ local function CreateTabs(owner, content, labels, onSelect)
   PanelTemplates_SetNumTabs(owner, #labels)
 end
 
+-- Blizzard's yellow callout, as an own HelpTipTemplate frame of the target. Never HelpTip:Show: it takes a frame from
+-- Blizzard's shared pool, and writing to the pool from addon code taints the help tips Blizzard shows later. The tip
+-- shows each time its target shows until it is closed or the feature is used, then never again on the account. It
+-- hides with its target without being marked. The returned function marks the feature used.
+local function AttachTip(target, text, targetPoint, alignment)
+  local tip
+  local info = {
+    text = text,
+    buttonStyle = HelpTip.ButtonStyle.Close,
+    targetPoint = targetPoint,
+    alignment = alignment,
+    -- A closed tip keeps its acknowledged mark (HelpTipTemplateMixin:HandleAcknowledge), which would mark the next
+    -- showing seen as soon as it hides, so after /crs intro a fresh frame takes its place.
+    onAcknowledgeCallback = function()
+      ns.db.tipSeen = true
+      tip = nil
+    end,
+  }
+  target:HookScript("OnShow", function()
+    if ns.db.tipSeen then return end
+    if not tip then
+      tip = CreateFrame("Frame", nil, target, "HelpTipTemplate")
+      tip.width = HelpTip.width
+      tip:SetWidth(tip.width)
+    end
+    tip:Init(target, info, target)
+    tip:Show()
+  end)
+  return function()
+    if tip and tip.info then tip:Acknowledge() else ns.db.tipSeen = true end
+  end
+end
+
 -- The addon's page in Blizzard's Settings window, as its own canvas, copying the settings list's look
 -- (Blizzard_SettingsList.xml:14-30, Blizzard_SettingControls.xml, Blizzard_SettingControls.lua). Never a settings
 -- list: a pick in a list dropdown runs addon code in Blizzard's pooled controls and taints its settings until /reload.
@@ -172,6 +208,7 @@ local function createFileRow(page, group, index, file, x)
     ns.db.muted[file] = not ticked
     ns.Refresh(group)
     showTick(self, ticked)
+    page.tipUsed()
   end)
   AttachTooltip(checkbox, function(tooltip)
     GameTooltip_SetTitle(tooltip, group.label)
@@ -227,6 +264,7 @@ local function buildPage(parent, weapon)
       column = column + 1
     end
   end
+  page.tipUsed = AttachTip(page.controls[1], TIP, HelpTip.Point.BottomEdgeCenter, HelpTip.Alignment.Left)
 
   local playsTop = -(ROWS_TOP + rowsHeight + SECTION)
   local heading = CreateText(page, GameFontNormal)
