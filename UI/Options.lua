@@ -369,9 +369,23 @@ function CleanRangedSounds_CompartmentClick()
   ns.OpenSettings()
 end
 
+-- The tooltip lists how many sounds each weapon has muted, then what a click does.
 function CleanRangedSounds_CompartmentEnter(_, menuButton)
   GameTooltip:SetOwner(menuButton, "ANCHOR_LEFT")
   GameTooltip_SetTitle(GameTooltip, ns.title)
+  for _, weapon in ipairs(ns.weapons) do
+    local muted, total = 0, 0
+    for _, group in ipairs(ns.groups) do
+      if group.weapon == weapon.key then
+        for _, file in ipairs(group.files) do
+          total = total + 1
+          if ns.db.muted[file] then muted = muted + 1 end
+        end
+      end
+    end
+    GameTooltip_AddColoredDoubleLine(GameTooltip, weapon.label, ("%d of %d muted"):format(muted, total),
+      HIGHLIGHT_FONT_COLOR, HIGHLIGHT_FONT_COLOR)
+  end
   GameTooltip_AddInstructionLine(GameTooltip, "Click to open the settings.")
   GameTooltip:Show()
 end

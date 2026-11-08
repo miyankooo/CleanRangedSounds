@@ -126,8 +126,13 @@ local env = {
   PanelTemplates_SetTab = function(frame, index) frame.selectedTab = index end,
   InCombatLockdown = function() return inCombat end,
   strtrim = function(text) return (text:gsub("^%s+", ""):gsub("%s+$", "")) end,
+  HIGHLIGHT_FONT_COLOR = {},
   GameTooltip_SetTitle = function(_, text) tooltipLines[#tooltipLines + 1] = text end,
   GameTooltip_AddNormalLine = function(_, text) tooltipLines[#tooltipLines + 1] = text end,
+  GameTooltip_AddColoredDoubleLine = function(_, left, right, leftColor, rightColor)
+    tooltipLines[#tooltipLines + 1] = left .. " | " .. right
+    assert(leftColor == HIGHLIGHT_FONT_COLOR and rightColor == HIGHLIGHT_FONT_COLOR)
+  end,
   GameTooltip_AddInstructionLine = function(_, text) tooltipLines[#tooltipLines + 1] = text end,
   GameTooltip_Hide = function() end,
 }
@@ -293,6 +298,16 @@ tooltipLines = {}
 defaults.hooks.OnEnter(defaults)
 Check("Defaults says it resets only this tab", tooltipLines[1] == "Defaults"
   and tooltipLines[2]:find("The other tabs keep your choices.", 1, true))
+
+tooltipLines, opened = {}, nil
+CleanRangedSounds_CompartmentEnter("CleanRangedSounds", Frame("Button"))
+Check("the addon menu lists each weapon's muted sounds, then the click", #tooltipLines == 5
+  and tooltipLines[1] == "Clean Ranged Sounds" and tooltipLines[2] == "Bow | 11 of 20 muted"
+  and tooltipLines[3] == "Crossbow | 0 of 12 muted" and tooltipLines[4] == "Gun | 1 of 15 muted"
+  and tooltipLines[5] == "Click to open the settings.")
+CleanRangedSounds_CompartmentClick()
+Check("and a click opens the settings", opened == 14)
+opened = nil
 
 -- The shared slash words.
 local HELP = "<gold>[Clean Ranged Sounds]</gold>: Type /crs for the settings, /crs intro to see the welcome line and "
