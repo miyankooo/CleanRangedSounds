@@ -159,6 +159,7 @@ local function BuildPanel(introText, restoreDefaults)
   defaults:SetPoint("TOPRIGHT", -36, -16)
   defaults:SetText(SETTINGS_DEFAULTS)
   defaults:SetScript("OnClick", restoreDefaults)
+  panel.defaults = defaults
   panel.intro = CreateText(panel, GameFontHighlight)
   panel.intro:SetPoint("TOPLEFT", LABEL_X, INTRO_Y)
   panel.intro:SetPoint("TOPRIGHT", -LABEL_X, INTRO_Y)
@@ -306,6 +307,15 @@ end
 local function buildSettings()
   panel = BuildPanel(INTRO, restoreDefaults)
   panel:Hide()
+
+  -- UIPanelButtonTemplate sets its own OnEnter and OnLeave (UIPanelButtonMixin), so the tooltip hooks in after it.
+  panel.defaults:HookScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip_SetTitle(GameTooltip, SETTINGS_DEFAULTS)
+    GameTooltip_AddNormalLine(GameTooltip, "Resets the sounds on this tab and which shots this weapon plays. The other"
+      .. " tabs keep your choices.")
+    GameTooltip:Show()
+  end)
 
   -- A padding above the page's bottom edge, so the inset's border doesn't sit on it.
   local inset = CreateInset(panel)

@@ -73,6 +73,7 @@ function Frame(kind, name, parent, template)
 end
 
 local SECRET = {}
+local tooltipLines = {}
 local onLoaded, onLogin, afterCombat, onItemRef = {}, {}, {}, nil
 local inCombat, registered, opened = false, nil, nil
 local Settings = {
@@ -125,9 +126,9 @@ local env = {
   PanelTemplates_SetTab = function(frame, index) frame.selectedTab = index end,
   InCombatLockdown = function() return inCombat end,
   strtrim = function(text) return (text:gsub("^%s+", ""):gsub("%s+$", "")) end,
-  GameTooltip_SetTitle = function() end,
-  GameTooltip_AddNormalLine = function() end,
-  GameTooltip_AddInstructionLine = function() end,
+  GameTooltip_SetTitle = function(_, text) tooltipLines[#tooltipLines + 1] = text end,
+  GameTooltip_AddNormalLine = function(_, text) tooltipLines[#tooltipLines + 1] = text end,
+  GameTooltip_AddInstructionLine = function(_, text) tooltipLines[#tooltipLines + 1] = text end,
   GameTooltip_Hide = function() end,
 }
 for key, value in pairs(env) do _G[key] = value end
@@ -273,6 +274,25 @@ listener.scripts.OnEvent(listener, "UNIT_SPELLCAST_SUCCEEDED", "player", "cast",
 Check("an Auto Shot with a muted gun shot plays one kept file", #played == before + 1 and played[#played] ~= 567721)
 listener.scripts.OnEvent(listener, "UNIT_SPELLCAST_SUCCEEDED", "player", "cast", SECRET)
 Check("a secret spell ID plays nothing", #played == before + 1)
+
+-- Tooltips: every row, speaker and Defaults explains itself on hover.
+local missing = 0
+for _, frame in ipairs(stubs) do
+  local tab = frame.template == "PanelTopTabButtonTemplate"
+  local control = frame.kind == "CheckButton" or frame.kind == "Button" and not tab
+  local hooks = rawget(frame, "hooks")
+  if control and not frame.scripts.OnEnter and not (hooks and hooks.OnEnter) then missing = missing + 1 end
+end
+Check("every row, speaker and Defaults has a tooltip", missing == 0)
+
+local defaults
+for _, frame in ipairs(stubs) do
+  if frame.kind == "Button" and frame.text == "Defaults" then defaults = frame end
+end
+tooltipLines = {}
+defaults.hooks.OnEnter(defaults)
+Check("Defaults says it resets only this tab", tooltipLines[1] == "Defaults"
+  and tooltipLines[2]:find("The other tabs keep your choices.", 1, true))
 
 -- The shared slash words.
 local HELP = "<gold>[Clean Ranged Sounds]</gold>: Type /crs for the settings, /crs intro to see the welcome line and "
