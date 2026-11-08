@@ -9,7 +9,7 @@ local SHOT_SPELLS = {
   1272941,
 }
 
-local SHOT_BY_WEAPON = {
+local WEAPON_BY_SUBCLASS = {
   [Enum.ItemWeaponSubclass.Bows] = "bow",
   [Enum.ItemWeaponSubclass.Crossbow] = "crossbow",
   [Enum.ItemWeaponSubclass.Guns] = "gun",
@@ -30,14 +30,15 @@ local function IsSecret(value)
   return not ok or secret
 end
 
--- Forever keeps bows and guns in the ranged slot (CharacterRangedSlot in Camelot/PaperDollFrame.xml).
-local function RangedShotGroup()
+-- The key of the bow, crossbow or gun in your ranged slot, or nil. Forever keeps them there
+-- (CharacterRangedSlot in Camelot/PaperDollFrame.xml). The settings page also opens on this weapon's tab.
+function ns.EquippedWeapon()
   local itemID = GetInventoryItemID("player", INVSLOT_RANGED)
   if not itemID then return nil end
 
   local _, _, _, _, _, classID, subclassID = C_Item.GetItemInfoInstant(itemID)
   if classID ~= Enum.ItemClass.Weapon then return nil end
-  return ns.shotGroups[SHOT_BY_WEAPON[subclassID]]
+  return WEAPON_BY_SUBCLASS[subclassID]
 end
 
 -- Cast info for the player is only secret when Blizzard flags the spell itself, so a secret spell ID is
@@ -45,7 +46,7 @@ end
 local function OnSpellcastSucceeded(_, _, _, _, spellID)
   if IsSecret(spellID) or not shotNames[C_Spell.GetSpellName(spellID) or ""] then return end
 
-  local group = RangedShotGroup()
+  local group = ns.shotGroups[ns.EquippedWeapon()]
   local kept = group and ns.KeptFiles(group)
   if kept and #kept > 0 then ns.PlayFile(kept[math.random(#kept)]) end
 end

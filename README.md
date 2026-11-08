@@ -7,16 +7,17 @@ A WoW Forever addon that mutes the creak of a bow being drawn before every shot,
 ## Features
 
 - Mutes the bow pullback creak by default.
-- Lists every bow, crossbow and gun sound. Tick to mute it, click Play to hear it first.
+- Lists every bow, crossbow and gun sound, classic and modern, one tab per weapon. Untick a sound to mute it, click its speaker to hear it first.
+- Untick the classic shots of a bow or gun to hear only its modern shots.
 - Changes apply at once, with no reload.
-- Your shots never go silent: a muted shot sound is replaced by one you kept.
+- Your shots never go silent: they play one of the shot sounds you kept.
 - Give any weapon another weapon's shots, such as crossbow shots on a gun for a silenced sound.
 
 ## Usage
 
-1. Type `/crs`, or pick Clean Ranged Sounds in the addon menu.
-2. Under Bow, Crossbow and Gun, click Play to hear a sound and tick the ones to mute.
-3. Under Your Shots, pick which shot sounds each weapon plays.
-4. Click Defaults to mute only the bow creak again.
+1. Type `/crs`, pick Clean Ranged Sounds in the addon menu, or find it under Options > AddOns. It opens on the weapon you have equipped.
+2. Click a speaker to hear a sound, and untick the ones to mute.
+3. Under Your Gun Shots Play, or the same for your bow or crossbow, tick the shot sounds your weapon plays.
+4. Click Defaults to reset the weapon you see.
 
-A muted sound is muted for everyone, so other players' bows and guns go quiet too.
+A muted sound is muted for everyone, so other players' bows and guns go quiet too. While your own shots play a pick of their own, other players' shots with that weapon are silent.

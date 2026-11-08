@@ -11,7 +11,7 @@ C_AddOns = { GetAddOnMetadata = function() return "Clean Ranged Sounds" end }
 
 local ns = {}
 assert(loadfile("Core/Sounds.lua"))("CleanRangedSounds", ns)
-CleanRangedSoundsDB = { plays = { gun = { crossbow = "yes" } } }
+CleanRangedSoundsDB = { plays = { gun = { crossbow = "yes" } }, replace = false }
 onLoaded()
 
 local failures = 0
@@ -43,12 +43,27 @@ for _, group in ipairs(ns.groups) do
     seen[file] = true
   end
 end
-Check("37 files over six groups", total == 37 and #ns.groups == 6)
+Check("47 files over seven groups", total == 47 and #ns.groups == 7)
+Check("gun shots keep the classic three first, then the modern sets", Group("gunShot").files[3] == 567722
+  and Group("gunShot").files[4] == 921248 and #Group("gunShot").files == 12)
 Check("each weapon names its shot group", ns.shotGroups.bow == bowShot and ns.shotGroups.crossbow == crossbowShot
   and ns.shotGroups.gun == Group("gunShot"))
 
+local weaponKeys, setsMatch = {}, true
+for _, weapon in ipairs(ns.weapons) do weaponKeys[weapon.key] = true end
+for _, group in ipairs(ns.groups) do
+  local count = 0
+  for _, set in ipairs(group.sets) do count = count + set[2] end
+  if count ~= #group.files or not weaponKeys[group.weapon] then setsMatch = false end
+end
+Check("every group belongs to a weapon and its sets name each file once", setsMatch)
+Check("rows read by set", ns.FileLabel(pull, 3) == "Classic 3" and ns.FileLabel(pull, 11) == "Modern 8"
+  and ns.FileLabel(Group("gunShot"), 4) == "Modern 1" and ns.FileLabel(Group("gunShot"), 10) == "Heavy 1"
+  and ns.FileLabel(crossbowShot, 1) == "Modern 1" and ns.FileLabel(pull, 12) == nil)
+
 Check("defaults mute every pull file and nothing else", AllMuted(pull, true) and AllMuted(bowShot, false)
-  and AllMuted(Group("crossbowLoad"), false) and ns.db.replace == true)
+  and AllMuted(Group("crossbowLoad"), false))
+Check("the old Replace switch is dropped from the saved settings", CleanRangedSoundsDB.replace == nil)
 Check("a group with nothing muted replaces nothing", ns.KeptFiles(bowShot) == nil)
 
 ns.db.muted[567673] = true
@@ -61,12 +76,6 @@ Check("other weapons stay untouched", AllMuted(crossbowShot, false))
 ns.PlayFile(567674)
 Check("a muted file plays and is muted again", played[1].file == 567674 and not played[1].muted and engineMuted[567674])
 
-ns.db.replace = false
-ns.Refresh(bowShot)
-Check("without replacement only the ticked file stays muted", engineMuted[567673] and not engineMuted[567674]
-  and ns.KeptFiles(bowShot) == nil)
-
-ns.db.replace = true
 for _, file in ipairs(bowShot.files) do ns.db.muted[file] = true end
 ns.Refresh(bowShot)
 Check("all muted replaces nothing", ns.KeptFiles(bowShot) == nil and AllMuted(bowShot, true))
@@ -96,7 +105,8 @@ Check("a gun on crossbow shots plays the five kept crossbow files", silenced and
 
 plays.gun.gun = true
 local mixed = ns.KeptFiles(gunShot)
-Check("gun and crossbow shots mix", mixed and #mixed == 8 and mixed[1] == 925551 and mixed[6] == 567721)
+Check("gun and crossbow shots mix", mixed and #mixed == 17 and mixed[1] == 925551 and mixed[6] == 567721
+  and mixed[17] == 1611342)
 
 plays.gun.gun, plays.gun.crossbow = false, false
 ns.Refresh(gunShot)
@@ -108,11 +118,15 @@ ns.Refresh(gunShot)
 Check("back on its own shots the gun plays as the game picks", ns.KeptFiles(gunShot) == nil
   and AllMuted(gunShot, false))
 
-ns.db.replace = false
 plays.bow.crossbow = true
 local borrowed = ns.KeptFiles(bowShot)
-Check("another weapon's shots play also without replacement", borrowed and #borrowed == 5
+Check("a bow with every own shot muted plays the five kept crossbow files", borrowed and #borrowed == 5
   and borrowed[1] == 925551)
+
+ns.ResetWeapon("bow")
+Check("Defaults resets only the weapon you see", AllMuted(pull, true) and AllMuted(bowShot, false)
+  and not engineMuted[567670] and plays.bow.bow and not plays.bow.crossbow and ns.KeptFiles(bowShot) == nil
+  and ns.db.muted[925549] and AllMuted(crossbowShot, true))
 
 print(failures == 0 and "Sounds: all checks passed" or ("Sounds: " .. failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

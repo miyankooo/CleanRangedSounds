@@ -12,8 +12,11 @@
 ## AddonCompartmentFuncOnLeave: CleanRangedSounds_CompartmentLeave
 
 # Load order is the dependency order: Sounds owns the sound list, the saved settings, the muting and
-# playback, Release plays a kept shot sound on your own shots, and Options builds the settings
-# panel, the slash command and the addon-menu entry on top of both.
+# playback, Release plays a kept shot sound on your own shots, and Options builds the settings page, the
+# slash command and the addon-menu entry on top of both.
+
+Libs\LibStub\LibStub.lua
+Libs\LibNativeUI-1.0\LibNativeUI-1.0.lua
 
 Core\Sounds.lua
 Core\Release.lua
