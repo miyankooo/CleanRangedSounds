@@ -164,7 +164,9 @@ end
 -- A missing or non-boolean value falls back to the default, so a checkbox never shows a state that
 -- does not match what is muted.
 local function LoadSettings()
-  if type(CleanRangedSoundsDB) ~= "table" then CleanRangedSoundsDB = {} end
+  -- No saved table means the addon's first load on this account. UI/Welcome.lua greets at login.
+  ns.firstRun = type(CleanRangedSoundsDB) ~= "table"
+  if ns.firstRun then CleanRangedSoundsDB = {} end
   local db = CleanRangedSoundsDB
 
   if type(db.muted) ~= "table" then db.muted = {} end

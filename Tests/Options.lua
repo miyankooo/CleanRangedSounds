@@ -58,7 +58,7 @@ function Frame(kind, name, parent, template)
 end
 
 local SECRET = {}
-local onLoaded, onLogin, afterCombat = {}, {}, {}
+local onLoaded, onLogin, afterCombat, onItemRef = {}, {}, {}, nil
 local inCombat, registered, opened = false, nil, nil
 local Settings = {
   RegisterCanvasLayoutCategory = function(frame, name)
@@ -74,7 +74,18 @@ local env = {
   SlashCmdList = {},
   GameFontNormal = {}, GameFontHighlight = {}, GameFontDisable = {},
   NORMAL_FONT_COLOR = { WrapTextInColorCode = function(_, text) return "<gold>" .. text .. "</gold>" end },
-  SETTINGS_DEFAULTS = "Defaults",
+  SETTINGS = "Settings", SETTINGS_DEFAULTS = "Defaults",
+  LinkTypes = { AddOn = "addon" },
+  LinkUtil = {
+    FormatLink = function(linkType, text, ...)
+      return table.concat({ ("|H%s"):format(linkType), ... }, ":") .. ("|h%s|h"):format(text)
+    end,
+  },
+  EventRegistry = {
+    RegisterCallback = function(_, event, callback, owner)
+      if event == "SetItemRef" then onItemRef = function(...) callback(owner, ...) end end
+    end,
+  },
   SOUNDKIT = { IG_CHARACTER_INFO_TAB = 841 },
   INVSLOT_RANGED = 18,
   Enum = { ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Bows = 2, Guns = 3, Crossbow = 18 } },
@@ -110,6 +121,10 @@ setmetatable(_G, { __index = function(_, key)
   if not unset[key] then error("unstubbed global " .. tostring(key), 2) end
 end })
 
+-- The addon's chat lines go to chat, the checks' own lines to the terminal.
+local write, chat = print, {}
+print = function(line) chat[#chat + 1] = line end
+
 -- Loads the addon's files in the toc's order, so a stale or missing toc line fails here.
 local ns = {}
 for line in io.lines("CleanRangedSounds.toc") do
@@ -119,10 +134,6 @@ end
 rawset(_G, "CleanRangedSoundsDB", nil)
 for _, callback in ipairs(onLoaded) do callback() end
 for _, callback in ipairs(onLogin) do callback() end
-
--- The addon's chat lines go to chat, the checks' own lines to the terminal.
-local write, chat = print, {}
-print = function(line) chat[#chat + 1] = line end
 
 local failures = 0
 local function Check(label, condition)
@@ -143,14 +154,21 @@ local panel = registered and registered.frame
 Check("the page is registered under AddOns at load", panel and registered.added
   and registered.name == "Clean Ranged Sounds")
 
+Check("the first login prints the welcome line with the Settings link", #chat == 1
+  and chat[1]:find("<gold>|Haddon:CleanRangedSounds|h[Settings]|h</gold>", 1, true))
+
 inCombat = true
 SlashCmdList.CLEANRANGEDSOUNDS("")
 Check("/crs in combat waits for combat to end", opened == nil and #afterCombat == 1)
-Check("and says so in one line with the gold title", #chat == 1
-  and chat[1] == "<gold>[Clean Ranged Sounds]</gold>: Opens after combat.")
+Check("and says so in one line with the gold title", #chat == 2
+  and chat[2] == "<gold>[Clean Ranged Sounds]</gold>: Opens after combat.")
 inCombat = false
 afterCombat[1]()
 Check("then opens Settings on the page", opened == 14)
+
+opened = nil
+onItemRef("addon:CleanRangedSounds", "[Settings]", "LeftButton")
+Check("the welcome link opens Settings on the page", opened == 14)
 
 -- What Blizzard does when it shows the page.
 panel:Show()
