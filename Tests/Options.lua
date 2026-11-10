@@ -214,8 +214,10 @@ panel.OnRefresh()
 Check("the page opens on the equipped gun", panel.selectedTab == 3)
 Check("three weapon tabs", #panel.Tabs == 3 and panel.Tabs[1].text == "Bow")
 
+-- Pages are built in tab order, so the first Classic 1 is the bow's pull and the first Modern 6 the crossbow's shot.
 local gunPage = Find("CheckButton", "Heavy 1").parent
-local bowPage = Find("CheckButton", "Modern 8").parent
+local bowPage = Find("CheckButton", "Classic 1").parent
+local crossbowPage = Find("CheckButton", "Modern 6").parent
 Check("only the gun page shows", gunPage:IsShown() and not bowPage:IsShown())
 
 local classic = Find("CheckButton", "Classic 1", gunPage)
@@ -253,22 +255,52 @@ Check("unticking any sound closes the tip for good", #Tips() == 0 and ns.db.tipS
 tipTarget.hooks.OnShow(tipTarget)
 Check("and it stays away when the row shows again", #Tips() == 0)
 Check("unticking a gun shot mutes it and replaces the group", ns.db.muted[567721] == true
-  and engineMuted[567721] and engineMuted[567718] and ns.KeptFiles(ns.shotGroups.gun)
-  and #ns.KeptFiles(ns.shotGroups.gun) == 11)
+  and engineMuted[567721] and engineMuted[567718] and ns.ShotFiles("gun") and #ns.ShotFiles("gun") == 11)
 
 local crossbowShots = Find("CheckButton", "Crossbow Shots", gunPage)
 crossbowShots:Click()
 Check("Gun Shots Play Crossbow Shots mixes them in", ns.db.plays.gun.crossbow == true
-  and #ns.KeptFiles(ns.shotGroups.gun) == 17)
+  and #ns.ShotFiles("gun") == 17)
 
 panel.Tabs[1]:Click()
 Check("the Bow tab shows the bow page with the pull unticked", panel.selectedTab == 1 and bowPage:IsShown()
-  and not gunPage:IsShown() and not Find("CheckButton", "Modern 8", bowPage):GetChecked())
+  and not gunPage:IsShown() and not Find("CheckButton", "Classic 1", bowPage):GetChecked())
+
+local function Texts(parent)
+  local texts = {}
+  for _, frame in ipairs(stubs) do
+    if frame.kind == "FontString" and frame.parent == parent and frame.text then texts[frame.text] = true end
+  end
+  return texts
+end
+local function ClickDefaults()
+  for _, frame in ipairs(stubs) do
+    if frame.kind == "Button" and frame.text == "Defaults" then frame:Click() end
+  end
+end
+
+panel.Tabs[2]:Click()
+local crossbowTexts = Texts(crossbowPage)
+Check("the Crossbow tab lists only the crossbow shots and points to the Bow tab", crossbowPage:IsShown()
+  and not Find("CheckButton", "Classic 1", crossbowPage)
+  and crossbowTexts["A crossbow plays the bow's pull and shot sounds. Mute them on the Bow tab."]
+  and not Texts(bowPage)["A bow plays the bow's pull and shot sounds. Mute them on the Bow tab."])
+Check("and says replacing silences other players' bows and crossbows", crossbowTexts["Your own shots play one of the"
+  .. " ticked shots. While those differ from the game's own, other players' bows and crossbows fire silently."])
+
+local crossbowBow = Find("CheckButton", "Bow Shots", crossbowPage)
+local crossbowOwn = Find("CheckButton", "Crossbow Shots", crossbowPage)
+Check("a crossbow plays the bow's shots by default", crossbowBow:GetChecked() and not crossbowOwn:GetChecked())
+crossbowOwn:Click()
+crossbowBow:Click()
+Check("on crossbow shots it mutes the bow twang and plays a snap", engineMuted[567674]
+  and #ns.ShotFiles("crossbow") == 6 and not engineMuted[925549])
+ClickDefaults()
+Check("Defaults puts the crossbow back on the bow's shots", crossbowBow:GetChecked() and not crossbowOwn:GetChecked()
+  and not engineMuted[567674] and ns.ShotFiles("crossbow") == nil)
 
 panel.Tabs[3]:Click()
-for _, frame in ipairs(stubs) do
-  if frame.kind == "Button" and frame.text == "Defaults" then frame:Click() end
-end
+ClickDefaults()
 Check("Defaults resets the gun and its rows", not ns.db.muted[567721] and not ns.db.plays.gun.crossbow
   and shot:GetChecked() and not crossbowShots:GetChecked() and not engineMuted[567721]
   and ns.db.muted[567677])
@@ -317,8 +349,8 @@ Check("Defaults says it resets only this tab", tooltipLines[1] == "Defaults"
 tooltipLines, opened = {}, nil
 CleanRangedSounds_CompartmentEnter("CleanRangedSounds", Frame("Button"))
 Check("the addon menu lists each weapon's muted sounds, then the click", #tooltipLines == 5
-  and tooltipLines[1] == "Clean Ranged Sounds" and tooltipLines[2] == "Bow | 11 of 20 muted"
-  and tooltipLines[3] == "Crossbow | 0 of 12 muted" and tooltipLines[4] == "Gun | 1 of 15 muted"
+  and tooltipLines[1] == "Clean Ranged Sounds" and tooltipLines[2] == "Bow | 3 of 11 muted"
+  and tooltipLines[3] == "Crossbow | 0 of 6 muted" and tooltipLines[4] == "Gun | 1 of 15 muted"
   and tooltipLines[5] == "Click to open the settings.")
 CleanRangedSounds_CompartmentClick()
 Check("and a click opens the settings", opened == 14)

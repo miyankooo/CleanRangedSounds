@@ -236,7 +236,7 @@ local function createPlaysRow(page, weapon, sound, x, y)
   checkbox:SetPoint("TOPLEFT", x, y)
   checkbox:SetScript("OnClick", function(self)
     ns.db.plays[weapon.key][sound.key] = self:GetChecked()
-    ns.Refresh(ns.shotGroups[weapon.key])
+    ns.Refresh(ns.shotGroups[weapon.gameShots])
   end)
   AttachTooltip(checkbox, function(tooltip)
     GameTooltip_SetTitle(tooltip, sound.label .. " Shots")
@@ -247,7 +247,8 @@ local function createPlaysRow(page, weapon, sound, x, y)
   return checkbox
 end
 
--- One weapon's tab: a column per sound, then which shots your own weapon plays and what that costs.
+-- One weapon's tab: a column per sound, then which shots your own weapon plays and what that costs. A weapon the game
+-- gives another weapon's sounds, the crossbow, says where they are in the place of a next column.
 local function buildPage(parent, weapon)
   local page = CreateFrame("Frame", nil, parent)
   page:SetPoint("TOPLEFT", PADDING, -PADDING)
@@ -269,6 +270,15 @@ local function buildPage(parent, weapon)
       column = column + 1
     end
   end
+  local game = ns.weaponByKey[weapon.gameShots]
+  if game ~= weapon then
+    local pointer = CreateText(page, GameFontDisable)
+    pointer:SetPoint("TOPLEFT", column * COLUMN_PITCH, 0)
+    pointer:SetPoint("RIGHT")
+    pointer:SetWordWrap(true)
+    pointer:SetText(("A %s plays the %s's pull and shot sounds. Mute them on the %s tab."):format(weapon.key,
+      game.key, game.label))
+  end
   page.showTip, page.retireTip = AttachTip(page.controls[1], TIP, HelpTip.Point.BottomEdgeCenter, nil,
     HelpTip.Alignment.Left)
 
@@ -281,13 +291,18 @@ local function buildPage(parent, weapon)
       playsTop - ROWS_TOP)
   end
 
-  -- Replacing mutes the whole shot group for the game, since its own pick cannot be read (Core/Sounds.lua KeptFiles).
+  -- Replacing mutes the game's whole shot group, since its own pick cannot be read (Core/Sounds.lua Replacing), so it
+  -- silences every weapon the game plays that group for.
+  local silenced = {}
+  for _, other in ipairs(ns.weapons) do
+    if other.gameShots == weapon.gameShots then silenced[#silenced + 1] = other.key .. "s" end
+  end
   local note = CreateText(page, GameFontDisable)
   note:SetPoint("TOPLEFT", 0, playsTop - ROWS_TOP - ROW - TIGHT)
   note:SetPoint("RIGHT")
   note:SetWordWrap(true)
-  note:SetText(("Your own shots play one of the ticked shots. Untick some but not all of them, or pick another"
-    .. " weapon's shots, and other players' %ss fire silently."):format(weapon.key))
+  note:SetText(("Your own shots play one of the ticked shots. While those differ from the game's own, other players'"
+    .. " %s fire silently."):format(table.concat(silenced, " and ")))
   return page
 end
 

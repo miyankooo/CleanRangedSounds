@@ -17,60 +17,52 @@ function ns.CanAccess(value)
   return ok and not secret
 end
 
--- One group per weapon and sound, with every file a sound kit on Forever can pick from at random (SoundKitEntry on
--- 70790). sets names the runs of files in order, so a row reads "Modern 4": the classic files first, then the modern
--- sets from retail WoW, the hunter bow and crossbow variants, the blunderbuss gun shots (kit 232311) and the large gun
--- shots (kit 273183), which the settings page calls Heavy. New files go at the end of their set. Files in no sound kit
--- never play and are left out, such as bowpullback1 to 3, the retail gun reloads (spell_hu_blunderbuss_reload) and
--- bow_cast_oneshot. A bow has no load sound and a gun no pull sound. Shot abilities such as Arcane Shot are left out on
--- purpose: they reuse spell sounds that dozens of other spells share. A shot group's kept files can stand in for a
--- muted file, also for another weapon's shots.
+-- What Forever plays for a ranged weapon, from its ItemRangedDisplayInfo on 70862: every bow and crossbow draws with
+-- sound kit 1144 and fires with kit 1146, every gun loads with 1147 and fires with 1148. So a crossbow creaks and twangs
+-- like a bow, and gameShots names the shot group the game plays for each weapon.
 ns.weapons = {
-  { key = "bow", label = "Bow" },
-  { key = "crossbow", label = "Crossbow" },
-  { key = "gun", label = "Gun" },
+  { key = "bow", label = "Bow", gameShots = "bow" },
+  { key = "crossbow", label = "Crossbow", gameShots = "bow" },
+  { key = "gun", label = "Gun", gameShots = "gun" },
 }
 
+ns.weaponByKey = {}
+for _, weapon in ipairs(ns.weapons) do ns.weaponByKey[weapon.key] = weapon end
+
+-- One group per weapon tab and sound, with every file of the kit the game picks from at random (SoundKitEntry on
+-- 70862). sets names the runs of files in order, so a row reads "Modern 4": the classic files first, then the modern
+-- sets from retail WoW. The game plays the modern bow shots only for Shoot (1272941, kit 353467); the crossbow shots
+-- (kit 268966), the modern gun shots (kit 232311) and the large gun shots (kit 273183, which the settings page calls
+-- Heavy) only sound through this addon's replacement. New files go at the end of their set. Files nothing on Forever
+-- plays have no row, since a tick could not bring them back: the retail bow pulls (kit 268965), the bow aim (1145),
+-- the crossbow loads (268967 and 374026, whose visual kit 284708 no event starts), bowpullback1 to 3, the retail gun
+-- reloads and bow_cast_oneshot. A gun has no pull sound. Shot abilities such as Arcane Shot are left out on purpose:
+-- they reuse spell sounds that dozens of other spells share.
 ns.groups = {
   {
     key = "bowPull",
     weapon = "bow",
     label = "Pull",
-    tooltip = "The creak of a bow being drawn before each shot. Crossbows may play it too.",
-    files = { 567677, 567675, 567676, 925291, 925293, 925295, 925297, 925299, 925301, 925303, 925305 },
-    sets = { { "Classic", 3 }, { "Modern", 8 } },
+    tooltip = "The creak of a bow or crossbow being drawn before each shot.",
+    files = { 567677, 567675, 567676 },
+    sets = { { "Classic", 3 } },
     mutedByDefault = true,
-  },
-  {
-    key = "bowAim",
-    weapon = "bow",
-    label = "Aim",
-    tooltip = "The creak of a drawn bow held while a shot is cast.",
-    files = { 567670 },
-    sets = { { "Classic", 1 } },
   },
   {
     key = "bowShot",
     weapon = "bow",
     label = "Shot",
-    tooltip = "The twang of a bow string as the shot leaves. Crossbows may play it too.",
+    tooltip = "The twang of a bow or crossbow string as the shot leaves.",
     files = { 567674, 567673, 567682, 922086, 922088, 922090, 922092, 922094 },
     sets = { { "Classic", 3 }, { "Modern", 5 } },
     shot = true,
   },
   {
-    key = "crossbowLoad",
-    weapon = "crossbow",
-    label = "Load",
-    tooltip = "The click of a crossbow being loaded before each shot.",
-    files = { 925307, 925309, 925311, 925313, 925315, 925317 },
-    sets = { { "Modern", 6 } },
-  },
-  {
     key = "crossbowShot",
     weapon = "crossbow",
     label = "Shot",
-    tooltip = "The snap of a crossbow firing.",
+    tooltip = "The snap of a crossbow firing. The game never plays it, so it sounds only on your own shots, when a"
+      .. " weapon plays Crossbow Shots.",
     files = { 925549, 925551, 925553, 925555, 925557, 925559 },
     sets = { { "Modern", 6 } },
     shot = true,
@@ -114,32 +106,50 @@ ns.db = {}
 -- unticked file starts out untouched, so a mute set by another addon is never undone at load.
 local mutedByUs = {}
 
--- The files your own shots with this group's weapon pick from: the kept files of every shot group that weapon
--- plays. The game's own pick cannot be read, so whenever that differs from the game's, the whole group is muted
--- for the game and your own shots play one of these instead (Core/Release.lua). Muting one file alone would leave
--- some of your shots silent. A weapon on its own sounds replaces only when some but not all of its files are
--- muted. Nil when the group plays as the game picks, empty when the weapon plays no kept sound.
-function ns.KeptFiles(group)
-  if not group.shot then return nil end
-
-  local plays, ownOnly, kept = ns.db.plays[group.weapon], true, {}
-  for _, other in ipairs(ns.groups) do
-    if other.shot then
-      if plays[other.weapon] ~= (other == group) then ownOnly = false end
-      if plays[other.weapon] then
-        for _, file in ipairs(other.files) do
-          if not ns.db.muted[file] then kept[#kept + 1] = file end
-        end
+-- The files your own shots with a weapon pick from: the kept files of every shot group it plays. Empty when the
+-- weapon plays no kept sound.
+local function KeptFiles(weaponKey)
+  local plays, kept = ns.db.plays[weaponKey], {}
+  for _, group in ipairs(ns.groups) do
+    if group.shot and plays[group.weapon] then
+      for _, file in ipairs(group.files) do
+        if not ns.db.muted[file] then kept[#kept + 1] = file end
       end
     end
   end
-  if ownOnly and (#kept == 0 or #kept == #group.files) then return nil end
   return kept
+end
+
+-- Whether the game's own pick is what a weapon should play: only the shot group the game plays for it, with all of
+-- that group's files kept or all muted.
+local function PlaysAsGame(weapon)
+  local plays = ns.db.plays[weapon.key]
+  for sound in pairs(ns.shotGroups) do
+    if plays[sound] ~= (sound == weapon.gameShots) then return false end
+  end
+  local kept = #KeptFiles(weapon.key)
+  return kept == 0 or kept == #ns.shotGroups[weapon.gameShots].files
+end
+
+-- Whether a shot group is muted for the game, so your own shots play through the addon (Core/Release.lua): when any
+-- weapon the game plays it for should sound different. The game's pick cannot be read, and muting one file alone
+-- would leave some of your shots silent.
+local function Replacing(group)
+  for _, weapon in ipairs(ns.weapons) do
+    if weapon.gameShots == group.weapon and not PlaysAsGame(weapon) then return true end
+  end
+  return false
+end
+
+-- The files your own shots with a weapon play through the addon, or nil when the game plays them itself.
+function ns.ShotFiles(weaponKey)
+  local weapon = ns.weaponByKey[weaponKey]
+  if weapon and Replacing(ns.shotGroups[weapon.gameShots]) then return KeptFiles(weaponKey) end
 end
 
 -- A muted file is silent wherever it plays, for every player and creature, not only your own shots.
 function ns.Refresh(group)
-  local replacing = ns.KeptFiles(group) ~= nil
+  local replacing = group.shot == true and Replacing(group)
   for _, file in ipairs(group.files) do
     local muted = ns.db.muted[file] or replacing
     if (mutedByUs[file] == true) ~= muted then
@@ -169,38 +179,49 @@ local function LoadSettings()
   if ns.firstRun then CleanRangedSoundsDB = {} end
   local db = CleanRangedSoundsDB
 
-  if type(db.muted) ~= "table" then db.muted = {} end
+  -- Only listed files keep a saved state, so a file the list dropped is forgotten.
+  local saved = type(db.muted) == "table" and db.muted or {}
+  db.muted = {}
   for _, group in ipairs(ns.groups) do
     for _, file in ipairs(group.files) do
-      if type(db.muted[file]) ~= "boolean" then db.muted[file] = group.mutedByDefault == true end
+      if type(saved[file]) == "boolean" then
+        db.muted[file] = saved[file]
+      else
+        db.muted[file] = group.mutedByDefault == true
+      end
     end
   end
   -- Replacement is always on since the canvas page replaced the settings list, so the old switch goes.
   db.replace = nil
 
-  -- plays[weapon][sound]: whether your own shots with that weapon play that weapon's shot sounds.
+  -- plays[weapon][sound]: whether your own shots with that weapon play that weapon's shot sounds, by default the ones
+  -- the game plays for it. Before version 2 a crossbow's default was the crossbow shots, which the game never plays
+  -- for it, so its saved pick starts over.
   if type(db.plays) ~= "table" then db.plays = {} end
-  for weapon in pairs(ns.shotGroups) do
-    if type(db.plays[weapon]) ~= "table" then db.plays[weapon] = {} end
+  if db.version ~= 2 then db.plays.crossbow = nil end
+  db.version = 2
+  for _, weapon in ipairs(ns.weapons) do
+    if type(db.plays[weapon.key]) ~= "table" then db.plays[weapon.key] = {} end
+    local plays = db.plays[weapon.key]
     for sound in pairs(ns.shotGroups) do
-      if type(db.plays[weapon][sound]) ~= "boolean" then db.plays[weapon][sound] = weapon == sound end
+      if type(plays[sound]) ~= "boolean" then plays[sound] = sound == weapon.gameShots end
     end
   end
   ns.db = db
 end
 
 -- Puts one weapon's sounds back the way a fresh install has them: only the bow pull muted, and the weapon's
--- shots playing its own sounds.
-function ns.ResetWeapon(weapon)
+-- shots playing the game's own. A crossbow's change reaches the bow's shot group, so every group refreshes.
+function ns.ResetWeapon(weaponKey)
   for _, group in ipairs(ns.groups) do
-    if group.weapon == weapon then
+    if group.weapon == weaponKey then
       for _, file in ipairs(group.files) do ns.db.muted[file] = group.mutedByDefault == true end
     end
   end
-  for sound in pairs(ns.shotGroups) do ns.db.plays[weapon][sound] = weapon == sound end
-  for _, group in ipairs(ns.groups) do
-    if group.weapon == weapon then ns.Refresh(group) end
+  for sound in pairs(ns.shotGroups) do
+    ns.db.plays[weaponKey][sound] = sound == ns.weaponByKey[weaponKey].gameShots
   end
+  for _, group in ipairs(ns.groups) do ns.Refresh(group) end
 end
 
 EventUtil.ContinueOnAddOnLoaded(addonName, function()

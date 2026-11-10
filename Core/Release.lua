@@ -36,13 +36,13 @@ function ns.EquippedWeapon()
 end
 
 -- Cast info for the player is only secret when Blizzard flags the spell itself, so a secret spell ID is
--- skipped instead of read. The weapon's own shot group stays muted for the game, so only this pick plays.
+-- skipped instead of read. While the addon plays your shots, the game's shot group for the weapon stays muted, so
+-- only this pick plays.
 local function OnSpellcastSucceeded(_, _, _, _, spellID)
   if not ns.CanAccess(spellID) or not shotNames[C_Spell.GetSpellName(spellID) or ""] then return end
 
-  local group = ns.shotGroups[ns.EquippedWeapon()]
-  local kept = group and ns.KeptFiles(group)
-  if kept and #kept > 0 then ns.PlayFile(kept[math.random(#kept)]) end
+  local files = ns.ShotFiles(ns.EquippedWeapon())
+  if files and #files > 0 then ns.PlayFile(files[math.random(#files)]) end
 end
 
 local listener = CreateFrame("Frame")
